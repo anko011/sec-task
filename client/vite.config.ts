@@ -5,12 +5,17 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
     plugins: [react()],
-    preview: {
-        port: 8080
-    },
     resolve: {
         alias: {
             '~': path.resolve(__dirname, 'src')
+        }
+    },
+    server: {
+        host: true,
+        port: 3000,
+        strictPort: true,
+        watch: {
+            usePolling: true
         }
     },
     test: {

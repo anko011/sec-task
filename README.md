@@ -1,6 +1,7 @@
 Инструкция запуска
 
 ```bash
+cd client
 docker build -t sectask .
-docker run -p 8080:8080 sectask
+docker run -p 8000:80 sectask
 ```
