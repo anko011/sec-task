@@ -1,4 +1,4 @@
-import type { Assignee } from '~/entities/assignees/@x/tasks';
+import type { Organization } from '~/entities/organizations';
 import type { TaskCategory } from '~/entities/task-categories/@x/tasks';
 
 export enum TaskStatus {
@@ -17,7 +17,7 @@ export enum TaskDangerStatus {
 }
 
 export type TaskProgress = {
-    assignee: Assignee;
+    organization: Organization;
     status: TaskStatus;
 };
 
@@ -25,8 +25,12 @@ export type Task = {
     id: string;
     description: string;
     name: string;
+    additionalInformation?: string;
     assigneeProgresses: TaskProgress[];
+    BDU?: string[];
     category: TaskCategory;
+    CVE?: string[];
     dangerStatus: TaskDangerStatus;
+    number: string;
     packageId: string;
 };

@@ -4,11 +4,19 @@ import type { ReactNode } from 'react';
 
 export type AlertDialogButtonProps = IconButtonProps & {
     dialogTitle: string;
+    disabledSubmit?: boolean;
     icon: ReactNode;
     tooltip: string;
 };
 
-export function AlertDialogButton({ children, dialogTitle, icon, tooltip, ...props }: AlertDialogButtonProps) {
+export function AlertDialogButton({
+    children,
+    dialogTitle,
+    disabledSubmit,
+    icon,
+    tooltip,
+    ...props
+}: AlertDialogButtonProps) {
     return (
         <AlertDialog.Root>
             <Tooltip content={tooltip}>
@@ -27,7 +35,7 @@ export function AlertDialogButton({ children, dialogTitle, icon, tooltip, ...pro
                         </Button>
                     </AlertDialog.Cancel>
                     <AlertDialog.Action>
-                        <Button color="red" variant="solid">
+                        <Button color="red" disabled={disabledSubmit} variant="solid">
                             Удалить
                         </Button>
                     </AlertDialog.Action>

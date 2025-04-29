@@ -12,6 +12,8 @@ export type TaskPackage = {
     id: string;
     name: string;
     baseDocument: BaseDocument;
+    incomingRequisite: string;
+    outgoingRequisite: string;
     status: TaskPackageStatus;
     tasksNumber: number;
 };

@@ -1,18 +1,19 @@
 import '@radix-ui/themes/styles.css';
 import './styles.css';
 
-import { Theme } from '@radix-ui/themes';
 import { BrowserRouter } from 'react-router';
+
+import { ThemeProvider } from '~/features/themes/change';
 
 import { ApplicationRouter } from './router';
 
 function App() {
     return (
-        <Theme appearance="dark" panelBackground="translucent">
+        <ThemeProvider>
             <BrowserRouter>
                 <ApplicationRouter />
             </BrowserRouter>
-        </Theme>
+        </ThemeProvider>
     );
 }
 

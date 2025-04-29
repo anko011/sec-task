@@ -1,4 +1,5 @@
 import { PlusIcon } from '@radix-ui/react-icons';
+import { ScrollArea } from '@radix-ui/themes';
 import { useId } from 'react';
 
 import { type TaskDTO, TaskForm } from '~/entities/tasks';
@@ -18,7 +19,9 @@ export function CreateTaskButton({ onCreateTask }: CreateTaskButtonProps) {
             icon={<PlusIcon />}
             tooltip="Создать задачу"
         >
-            <TaskForm formId={formId} onSubmit={onCreateTask} />
+            <ScrollArea style={{ height: '70vh' }}>
+                <TaskForm formId={formId} onSubmit={onCreateTask} />
+            </ScrollArea>
         </DialogButton>
     );
 }

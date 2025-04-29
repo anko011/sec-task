@@ -1,3 +1,4 @@
+export { ChangeStatusesRepository, OrganizationsRepository } from './api/repository';
 export * from './mock';
 export type * from './model';
 export * from './ui';

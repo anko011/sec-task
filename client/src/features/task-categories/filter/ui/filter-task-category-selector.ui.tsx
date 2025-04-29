@@ -3,7 +3,7 @@ import { use } from 'react';
 
 import { TaskCategoriesRepository } from '~/entities/task-categories';
 
-const data = TaskCategoriesRepository.getAll();
+const data = TaskCategoriesRepository.findAll();
 
 export function FilterTaskCategorySelector() {
     const categories = use(data);

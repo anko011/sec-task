@@ -1,18 +1,13 @@
-import { Cross1Icon, MagnifyingGlassIcon } from '@radix-ui/react-icons';
-import { Badge, Box, Flex, IconButton, Select, Spinner, Text, TextArea, TextField } from '@radix-ui/themes';
-import { Suspense, useMemo, useRef, useState } from 'react';
+import { PlusIcon } from '@radix-ui/react-icons';
+import { Box, Flex, IconButton, Select, Text, TextArea, TextField } from '@radix-ui/themes';
+import type { KeyboardEventHandler } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
-import { AssigneesRepository, AssigneesTable } from '~/entities/assignees/@x/tasks';
-import {
-    TaskCategoriesRepository,
-    TaskCategoriesSelector,
-    type TaskCategory
-} from '~/entities/task-categories/@x/tasks';
-import { FileUploader } from '~/shared/ui/file-uploader';
-import { Pagination } from '~/shared/ui/pagination';
+import { TaskCategoriesSelector, type TaskCategory } from '~/entities/task-categories/@x/tasks';
 
 import { TaskDangerStatus } from '../model/task';
 import type { TaskDTO } from '../model/task.dto';
+import { BDUBadge } from './bdu-badge.ui';
 
 export type TaskFormProps = {
     formId: string;
@@ -20,74 +15,200 @@ export type TaskFormProps = {
     task?: TaskDTO | null;
 };
 
+type IdentifierListProps = {
+    label: string;
+    onAdd: (value: string) => void;
+    onRemove: (value: string) => void;
+    placeholder: string;
+    values: string[];
+};
+
+const IdentifierList = ({ label, onAdd, onRemove, placeholder, values }: IdentifierListProps) => {
+    const [inputValue, setInputValue] = useState('');
+
+    const handleAdd = useCallback(() => {
+        if (inputValue.trim() !== '') {
+            onAdd(inputValue.trim());
+            setInputValue('');
+        }
+    }, [inputValue, onAdd]);
+
+    const handleKeyDown = useCallback<KeyboardEventHandler>(
+        (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleAdd();
+            }
+        },
+        [handleAdd]
+    );
+
+    return (
+        <Box flexGrow="1" maxWidth="50%">
+            <label>
+                <Text as="div" mb="1" size="2" weight="bold">
+                    {label}
+                </Text>
+                <Flex gap="2">
+                    <TextField.Root
+                        onChange={(e) => {
+                            setInputValue(e.target.value);
+                        }}
+                        onKeyDown={handleKeyDown}
+                        placeholder={placeholder}
+                        style={{ flex: 1 }}
+                        value={inputValue}
+                    />
+                    <IconButton onClick={handleAdd} type="button">
+                        <PlusIcon />
+                    </IconButton>
+                </Flex>
+            </label>
+            <Flex gap="2" p="1" wrap="wrap">
+                {values.map((value, index) => (
+                    <BDUBadge
+                        key={`${value}:${index.toString()}`}
+                        onDelete={(value) => {
+                            onRemove(value);
+                        }}
+                    >
+                        {value}
+                    </BDUBadge>
+                ))}
+            </Flex>
+        </Box>
+    );
+};
+
+const DangerLevelSelector = ({ defaultValue }: { defaultValue?: TaskDangerStatus }) => (
+    <Select.Root defaultValue={defaultValue ?? TaskDangerStatus.CRITICAL} name="dangerStatus">
+        <Select.Trigger style={{ width: '100%' }} />
+        <Select.Content>
+            <Select.Item value={TaskDangerStatus.CRITICAL}>Критический</Select.Item>
+            <Select.Item value={TaskDangerStatus.HIGH}>Высокий</Select.Item>
+            <Select.Item value={TaskDangerStatus.MEDIUM}>Средний</Select.Item>
+            <Select.Item value={TaskDangerStatus.LOW}>Низкий</Select.Item>
+        </Select.Content>
+    </Select.Root>
+);
+
 export function TaskForm({ formId, onSubmit, task }: TaskFormProps) {
-    const [files, setFiles] = useState<File[]>([]);
-    const assignees = useMemo(() => AssigneesRepository.getAll(), []);
-    const categories = useMemo(() => TaskCategoriesRepository.getAll(), []);
-
     const formRef = useRef<HTMLFormElement>(null);
+    const [cveList, setCveList] = useState<string[]>(task?.CVE ?? []);
+    const [bduList, setBduList] = useState<string[]>(task?.BDU ?? []);
+    const [taskCategory, setTaskCategory] = useState<TaskCategory | undefined>(task?.category);
 
-    async function submit(formData: FormData) {
-        const name = formData.get('name') as string;
-        const description = formData.get('description') as string;
-        const assigneeIds = formData.getAll('assignee') as string[];
-        const dangerStatus = formData.get('dangerStatus') as TaskDangerStatus;
-        const categoryId = formData.get('category') as string;
+    const addCve = useCallback((cve: string) => {
+        setCveList((prev) => [...prev, cve]);
+    }, []);
 
-        const asg = await assignees;
-        const ctg = await categories;
+    const removeCve = useCallback((value: string) => {
+        setCveList((prev) => prev.filter((v) => v !== value));
+    }, []);
 
-        onSubmit?.({
-            description,
-            name,
-            assignees: asg.filter(({ id }) => assigneeIds.includes(id)),
-            category: ctg.find(({ id }) => id === categoryId) as TaskCategory,
-            dangerStatus
-        });
+    const addBdu = useCallback((bdu: string) => {
+        setBduList((prev) => [...prev, bdu]);
+    }, []);
 
-        formRef.current?.reset();
-    }
+    const removeBdu = useCallback((value: string) => {
+        setBduList((prev) => prev.filter((v) => v !== value));
+    }, []);
+
+    const changeCategory = useCallback((category?: TaskCategory) => {
+        setTaskCategory(category);
+    }, []);
+
+    const submit = useCallback(
+        (formData: FormData) => {
+            const name = formData.get('name') as string;
+            const number = formData.get('number') as string;
+            const description = formData.get('description') as string;
+            const dangerStatus = formData.get('dangerStatus') as TaskDangerStatus;
+            const additionalInformation = formData.get('additionalInformation') as string;
+
+            if (taskCategory == null) return;
+
+            onSubmit?.({
+                description,
+                name,
+                additionalInformation,
+                BDU: bduList,
+                category: taskCategory,
+                CVE: cveList,
+                dangerStatus,
+                number: task?.number ?? number
+            });
+
+            formRef.current?.reset();
+        },
+        [onSubmit, bduList, cveList, task?.number]
+    );
 
     return (
         <Flex asChild direction="column" gap="4">
             <form action={submit} id={formId} ref={formRef}>
-                <label>
-                    <Text as="div" mb="1" size="2" weight="bold">
-                        Название
-                    </Text>
-                    <TextField.Root defaultValue={task?.name} name="name" placeholder="Введите название задачи..." />
-                </label>
+                <Flex gap="2" justify="between" width="100%">
+                    <Box asChild flexGrow="1">
+                        <label>
+                            <Text as="div" mb="1" size="2" weight="bold">
+                                Номер
+                            </Text>
+                            <TextField.Root
+                                defaultValue={task?.number}
+                                name="number"
+                                placeholder="Введите номер задачи..."
+                                style={{ width: '100%' }}
+                            />
+                        </label>
+                    </Box>
+                    <Box asChild flexGrow="3">
+                        <label>
+                            <Text as="div" mb="1" size="2" weight="bold">
+                                Наименование
+                            </Text>
+                            <TextField.Root
+                                defaultValue={task?.name}
+                                name="name"
+                                placeholder="Введите название задачи..."
+                                style={{ width: '100%' }}
+                            />
+                        </label>
+                    </Box>
+                </Flex>
 
-                <label>
-                    <Text as="div" mb="1" size="2" weight="bold">
-                        Уровень опасности
-                    </Text>
-                    <Select.Root defaultValue={TaskDangerStatus.CRITICAL} name="dangerStatus">
-                        <Select.Trigger />
-                        <Select.Content>
-                            <Select.Item value={TaskDangerStatus.CRITICAL}>Критический</Select.Item>
-                            <Select.Item value={TaskDangerStatus.HIGH}>Высокий</Select.Item>
-                            <Select.Item value={TaskDangerStatus.MEDIUM}>Средний</Select.Item>
-                            <Select.Item value={TaskDangerStatus.LOW}>Низкий</Select.Item>
-                        </Select.Content>
-                    </Select.Root>
-                </label>
+                <Flex gap="4" justify="start" width="100%">
+                    <label>
+                        <Text as="div" mb="1" size="2" weight="bold">
+                            Уровень опасности
+                        </Text>
+                        <DangerLevelSelector defaultValue={task?.dangerStatus} />
+                    </label>
 
-                <label>
-                    <Text as="div" mb="1" size="2" weight="bold">
-                        Категория задачи
-                    </Text>
+                    <label>
+                        <Text as="div" mb="1" size="2" weight="bold">
+                            Категория задачи
+                        </Text>
+                        <TaskCategoriesSelector defaultValue={task?.category.id} onChange={changeCategory} />
+                    </label>
+                </Flex>
 
-                    <Suspense
-                        fallback={
-                            <Flex justify="center">
-                                <Spinner size="3" />
-                            </Flex>
-                        }
-                    >
-                        <TaskCategoriesSelector data={categories} name="category" />
-                    </Suspense>
-                </label>
+                <Flex gap="4" justify="start" width="100%">
+                    <IdentifierList
+                        label="CVE"
+                        onAdd={addCve}
+                        onRemove={removeCve}
+                        placeholder="Введите CVE (например, CVE-2021-34527)"
+                        values={cveList}
+                    />
+
+                    <IdentifierList
+                        label="BDU"
+                        onAdd={addBdu}
+                        onRemove={removeBdu}
+                        placeholder="Введите BDU (например, BDU:2025-04927)"
+                        values={bduList}
+                    />
+                </Flex>
 
                 <label>
                     <Text as="div" mb="1" size="2" weight="bold">
@@ -100,53 +221,18 @@ export function TaskForm({ formId, onSubmit, task }: TaskFormProps) {
                         style={{ height: '350px' }}
                     />
                 </label>
-                <Box>
+
+                <label>
                     <Text as="div" mb="1" size="2" weight="bold">
-                        Файлы
+                        Дополнительная информация
                     </Text>
-                    <FileUploader
-                        name="files"
-                        onFileUpload={(fl) => {
-                            setFiles((prev) => [...prev, ...Array.from(fl)]);
-                        }}
+                    <TextArea
+                        defaultValue={task?.additionalInformation}
+                        name="additionalInformation"
+                        placeholder="Введите дополнительную информацию..."
+                        style={{ height: '150px' }}
                     />
-
-                    <Flex display="inline-flex" gap="2" mt="2" wrap="wrap">
-                        {files.map((file, i) => (
-                            <Badge key={i}>
-                                {file.name}
-                                <IconButton
-                                    onClick={() => {
-                                        setFiles((prev) => prev.filter((f) => f.name !== file.name));
-                                    }}
-                                    size="1"
-                                    variant="ghost"
-                                >
-                                    <Cross1Icon />
-                                </IconButton>
-                            </Badge>
-                        ))}
-                    </Flex>
-                </Box>
-
-                <TextField.Root placeholder="Название организации...">
-                    <TextField.Slot>
-                        <IconButton size="1" variant="ghost">
-                            <MagnifyingGlassIcon />
-                        </IconButton>
-                    </TextField.Slot>
-                </TextField.Root>
-
-                <Suspense
-                    fallback={
-                        <Flex justify="center">
-                            <Spinner size="3" />
-                        </Flex>
-                    }
-                >
-                    <AssigneesTable data={assignees} defaultValue={task?.assignees} />
-                    <Pagination currentPage={5} totalPages={10} />
-                </Suspense>
+                </label>
             </form>
         </Flex>
     );

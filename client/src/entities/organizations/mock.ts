@@ -1,5 +1,8 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
+import { TaskStatus } from '~/entities/tasks/model/task';
+
 import { organizationTypes } from '../organization-types/mock';
+import type { StatusChange } from './model/change-status';
 
 export const organizations = {
     'a1b2c3d4-5678-90ab-cdef-1234567890ab': {
@@ -63,3 +66,71 @@ export const organizations = {
         isArchived: false
     }
 };
+
+export const statusChanges: StatusChange[] = [
+    {
+        id: '1',
+        changedAt: new Date(2025, 5, 20),
+        comment:
+            'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
+        newStatus: TaskStatus.NEW,
+        organization: organizations['a1b2c3d4-5678-90ab-cdef-1234567890ab'],
+        packageId: '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
+        taskId: '6ba7b810-9dad-11d1-80b4-00c04fd430c801'
+    },
+    {
+        id: '2',
+        changedAt: new Date(2025, 6, 21),
+        comment:
+            'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
+        newStatus: TaskStatus.IN_PROGRESS,
+        oldStatus: TaskStatus.NEW,
+        organization: organizations['a1b2c3d4-5678-90ab-cdef-1234567890ab'],
+        packageId: '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
+        taskId: '6ba7b810-9dad-11d1-80b4-00c04fd430c801'
+    },
+    {
+        id: '3',
+        changedAt: new Date(2025, 6, 22),
+        comment:
+            'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
+        newStatus: TaskStatus.COMPENSATED,
+        oldStatus: TaskStatus.IN_PROGRESS,
+        organization: organizations['a1b2c3d4-5678-90ab-cdef-1234567890ab'],
+        packageId: '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
+        taskId: '6ba7b810-9dad-11d1-80b4-00c04fd430c801'
+    },
+
+    {
+        id: '4',
+        changedAt: new Date(2025, 5, 20),
+        comment:
+            'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
+        newStatus: TaskStatus.NEW,
+        organization: organizations['b2c3d4e5-6789-01ab-cdef-2345678901bc'],
+        packageId: '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
+        taskId: '6ba7b810-9dad-11d1-80b4-00c04fd430c801'
+    },
+    {
+        id: '5',
+        changedAt: new Date(2025, 6, 21),
+        comment:
+            'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
+        newStatus: TaskStatus.IN_PROGRESS,
+        oldStatus: TaskStatus.NEW,
+        organization: organizations['b2c3d4e5-6789-01ab-cdef-2345678901bc'],
+        packageId: '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
+        taskId: '6ba7b810-9dad-11d1-80b4-00c04fd430c801'
+    },
+    {
+        id: '6',
+        changedAt: new Date(2025, 6, 22),
+        comment:
+            'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
+        newStatus: TaskStatus.NO_ACTUAL,
+        oldStatus: TaskStatus.IN_PROGRESS,
+        organization: organizations['b2c3d4e5-6789-01ab-cdef-2345678901bc'],
+        packageId: '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
+        taskId: '6ba7b810-9dad-11d1-80b4-00c04fd430c801'
+    }
+];

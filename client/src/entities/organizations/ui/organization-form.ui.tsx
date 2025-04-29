@@ -12,7 +12,7 @@ export type OrganizationFormProps = {
     organization?: Organization | null;
 };
 
-const data = OrganizationTypesRepository.getAll();
+const data = OrganizationTypesRepository.findAll();
 
 export function OrganizationForm({ formId, onSubmit, organization }: OrganizationFormProps) {
     const organizationTypes = use(data);

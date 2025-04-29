@@ -10,7 +10,7 @@ import { Loader } from '~/shared/ui/loader';
 import { Pagination } from '~/shared/ui/pagination';
 import { SearchField } from '~/shared/ui/search-field';
 
-const organizationTypes = OrganizationTypesRepository.getAll();
+const organizationTypes = OrganizationTypesRepository.findAll();
 
 export function OrganizationTypesPage() {
     return (

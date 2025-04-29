@@ -3,7 +3,6 @@ import { Navigate, Route, Routes } from 'react-router';
 
 import { OrganizationTypesPage } from '~/pages/organization-types';
 import { OrganizationsPage } from '~/pages/organizations';
-import { TaskPage } from '~/pages/task';
 import { TaskCategoriesPage } from '~/pages/task-categories';
 import { TaskPackagePage } from '~/pages/task-package';
 import { CreateTaskPackagePage } from '~/pages/task-package-create';
@@ -23,14 +22,12 @@ export function ApplicationRouter() {
                     <Route element={<TaskPackagesPage />} index />
                     <Route path=":id">
                         <Route element={<TaskPackagePage />} index />
-                        <Route element={<TaskPage />} path="tasks/:taskId" />
                         <Route element={<EditTaskPackagePage />} path="edit" />
                     </Route>
                     <Route element={<CreateTaskPackagePage />} path="create" />
                 </Route>
                 <Route element={<TaskCategoriesPage />} path="task-categories" />
                 <Route element={<Text>Not implemented</Text>} path="staff" />
-                <Route element={<Text>Not implemented</Text>} path="roles" />
             </Route>
         </Routes>
     );
