@@ -1,6 +1,6 @@
 import { ChevronLeftIcon, ChevronRightIcon } from '@radix-ui/react-icons';
 import { Button, Flex, type FlexProps, IconButton } from '@radix-ui/themes';
-import type { ReactNode } from 'react';
+import { type ReactNode, use } from 'react';
 
 /** Пропсы компонента {@link Pagination} */
 export type PaginationProps = FlexProps & {
@@ -11,7 +11,7 @@ export type PaginationProps = FlexProps & {
     /** Обработчик смены страницы */
     onPageChange?: (page: number) => void;
     /** Общее количество страниц */
-    totalPages: number;
+    totalPages: Promise<number> | number;
 };
 
 /**
@@ -59,7 +59,15 @@ function getPageRange(maxVisiblePages: number, currentPage: number, totalPages: 
  *   onPageChange={(page) => console.log('Переход на страницу:', page)}
  * />
  */
-export function Pagination({ currentPage, maxVisiblePages = 5, onPageChange, totalPages, ...props }: PaginationProps) {
+export function Pagination({
+    currentPage,
+    maxVisiblePages = 5,
+    onPageChange,
+    totalPages: tp,
+    ...props
+}: PaginationProps) {
+    const totalPages = use(Promise.resolve(tp));
+
     const handlePageChange = (page: number) => {
         if (page !== currentPage && page >= 1 && page <= totalPages) onPageChange?.(page);
     };

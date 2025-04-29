@@ -1,8 +1,7 @@
-import { Badge, DataList, Flex } from '@radix-ui/themes';
+import { DataList, Progress, Text } from '@radix-ui/themes';
 import { use } from 'react';
 
 import { TaskCategoryBadge } from '~/entities/task-categories/@x/tasks';
-import { Link } from '~/shared/ui/link';
 
 import type { Task } from '../model/task';
 import { TaskDangerStatusBadge } from './danger-status-badge.ui';
@@ -11,59 +10,62 @@ export type TaskInfoListProps = DataList.RootProps & {
     data: Task | Promise<Task>;
 };
 
-const files = [
-    {
-        name: 'Документ 1.pdf',
-        url: '/'
-    },
-    {
-        name: 'Документ 2.pdf',
-        url: '/'
-    },
-    {
-        name: 'Документ 3.pdf',
-        url: '/'
-    }
-];
-
 export function TaskInfoList({ data, ...props }: TaskInfoListProps) {
     const task = use(Promise.resolve(data));
     return (
-        <DataList.Root size="2" {...props}>
+        <DataList.Root key={task.id} size="1" {...props}>
             <DataList.Item>
-                <DataList.Label>Название</DataList.Label>
+                <DataList.Label minWidth="88px">Номер</DataList.Label>
+                <DataList.Value>358965</DataList.Value>
+            </DataList.Item>
+
+            <DataList.Item>
+                <DataList.Label minWidth="88px">Наименование</DataList.Label>
                 <DataList.Value>{task.name}</DataList.Value>
             </DataList.Item>
 
             <DataList.Item>
-                <DataList.Label>Описание</DataList.Label>
-                <DataList.Value>{task.description}</DataList.Value>
-            </DataList.Item>
-
-            <DataList.Item>
-                <DataList.Label>Статус опасности</DataList.Label>
-                <DataList.Value>
-                    <TaskDangerStatusBadge status={task.dangerStatus} />
-                </DataList.Value>
-            </DataList.Item>
-
-            <DataList.Item>
-                <DataList.Label>Категория</DataList.Label>
+                <DataList.Label minWidth="88px">Категория задачи</DataList.Label>
                 <DataList.Value>
                     <TaskCategoryBadge category={task.category} />
                 </DataList.Value>
             </DataList.Item>
 
             <DataList.Item>
-                <DataList.Label>Прикрепленные файлы</DataList.Label>
+                <DataList.Label minWidth="88px">Уровень критичности</DataList.Label>
                 <DataList.Value>
-                    <Flex gap="2">
-                        {files.map((file) => (
-                            <Link key={file.name} to={file.url}>
-                                <Badge>{file.name}</Badge>
-                            </Link>
-                        ))}
-                    </Flex>
+                    <TaskDangerStatusBadge status={task.dangerStatus} />
+                </DataList.Value>
+            </DataList.Item>
+
+            <DataList.Item>
+                <DataList.Label minWidth="88px">CVE</DataList.Label>
+                <DataList.Value>123</DataList.Value>
+            </DataList.Item>
+
+            <DataList.Item>
+                <DataList.Label minWidth="88px">BDU</DataList.Label>
+                <DataList.Value>123</DataList.Value>
+            </DataList.Item>
+
+            <DataList.Item>
+                <DataList.Label minWidth="88px">Срок исполнения</DataList.Label>
+                <DataList.Value>
+                    <Text>{new Date(2025, 11, 20).toLocaleDateString('ru')}</Text>
+                </DataList.Value>
+            </DataList.Item>
+
+            <DataList.Item>
+                <DataList.Label minWidth="88px">Дата исполнения</DataList.Label>
+                <DataList.Value>
+                    <Text>{new Date(2025, 11, 22).toLocaleDateString('ru')}</Text>
+                </DataList.Value>
+            </DataList.Item>
+
+            <DataList.Item>
+                <DataList.Label minWidth="88px">Прогресс</DataList.Label>
+                <DataList.Value>
+                    <Progress highContrast mt="1" size="3" value={Math.random() * 100} />
                 </DataList.Value>
             </DataList.Item>
         </DataList.Root>

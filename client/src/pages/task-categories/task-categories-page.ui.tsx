@@ -10,7 +10,7 @@ import { Pagination } from '~/shared/ui/pagination';
 import { SearchField } from '~/shared/ui/search-field';
 
 export function TaskCategoriesPage() {
-    const categories = TaskCategoriesRepository.getAll();
+    const categories = TaskCategoriesRepository.findAll();
     return (
         <Flex direction="column" gap="4" minHeight="100%">
             <Suspense fallback={<Loader />}>

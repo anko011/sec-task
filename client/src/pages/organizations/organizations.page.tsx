@@ -10,7 +10,7 @@ import { Loader } from '~/shared/ui/loader';
 import { Pagination } from '~/shared/ui/pagination';
 import { SearchField } from '~/shared/ui/search-field';
 
-const organizations = OrganizationsRepository.getAll();
+const organizations = OrganizationsRepository.findAll();
 
 export function OrganizationsPage() {
     return (
@@ -22,13 +22,16 @@ export function OrganizationsPage() {
                 </Flex>
 
                 <OrganizationTable
-                    action={(organization) => (
-                        <Flex gap="2">
-                            <EditOrganizationButton organization={organization} />
-                            <DeleteOrganizationButton organization={organization} />
-                        </Flex>
-                    )}
-                    data={organizations}
+                    actionEnd={{
+                        title: '',
+                        action: (organization) => (
+                            <Flex gap="2">
+                                <EditOrganizationButton organization={organization} />
+                                <DeleteOrganizationButton organization={organization} />
+                            </Flex>
+                        )
+                    }}
+                    data={organizations.then(({ items }) => items)}
                 />
                 <Pagination currentPage={5} totalPages={10} />
             </Suspense>

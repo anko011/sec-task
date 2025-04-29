@@ -1,9 +1,8 @@
-import { Badge, Card, DataList, Flex, type FlexProps, Text } from '@radix-ui/themes';
+import { Card, DataList, Flex, type FlexProps, Text } from '@radix-ui/themes';
 import type { ReactNode } from 'react';
 import { use } from 'react';
 
 import { TaskCategoryBadge } from '~/entities/task-categories/@x/tasks';
-import { Link } from '~/shared/ui/link';
 
 import type { TaskDTO } from '../model/task.dto';
 import { TaskDangerStatusBadge } from './danger-status-badge.ui';
@@ -12,13 +11,6 @@ export type TaskDTOListProps = FlexProps & {
     actions?: (dto: TaskDTO) => ReactNode;
     data: Promise<TaskDTO[]>;
 };
-
-//TODO: Перенести файлы в Task
-
-const files = [
-    { id: '1', name: 'Документ 1', url: '/' },
-    { id: '2', name: 'Документ 2', url: '/' }
-];
 
 export function TaskDTOList({ actions, data, ...props }: TaskDTOListProps) {
     const tasks = use(data);
@@ -29,6 +21,13 @@ export function TaskDTOList({ actions, data, ...props }: TaskDTOListProps) {
                     <Flex justify="between">
                         <DataList.Root size="1">
                             <DataList.Item>
+                                <DataList.Label minWidth="88px">Номер</DataList.Label>
+                                <DataList.Value>
+                                    <Text>{task.number}</Text>
+                                </DataList.Value>
+                            </DataList.Item>
+
+                            <DataList.Item>
                                 <DataList.Label minWidth="88px">Название</DataList.Label>
                                 <DataList.Value>
                                     <Text>{task.name}</Text>
@@ -36,7 +35,7 @@ export function TaskDTOList({ actions, data, ...props }: TaskDTOListProps) {
                             </DataList.Item>
 
                             <DataList.Item>
-                                <DataList.Label minWidth="88px">Статус опасности</DataList.Label>
+                                <DataList.Label minWidth="88px">Уровень критичности</DataList.Label>
                                 <DataList.Value>
                                     <TaskDangerStatusBadge status={task.dangerStatus} />
                                 </DataList.Value>
@@ -50,36 +49,28 @@ export function TaskDTOList({ actions, data, ...props }: TaskDTOListProps) {
                             </DataList.Item>
 
                             <DataList.Item>
-                                <DataList.Label minWidth="88px">Исполнители</DataList.Label>
-                                <DataList.Value>
-                                    <Flex gap="2">
-                                        {task.assignees.map((assignee) => (
-                                            <Badge key={assignee.id}>
-                                                {assignee.firstName} {assignee.secondName}
-                                            </Badge>
-                                        ))}
-                                    </Flex>
-                                    {task.assignees.length === 0 && <Text>Не установлены исполнители</Text>}
-                                </DataList.Value>
+                                <DataList.Label minWidth="88px">CVE</DataList.Label>
+                                <Flex asChild gap="2">
+                                    <DataList.Value>
+                                        {task.CVE?.map((CVE, i) => <Text key={`${CVE}:${i.toString()}`}>{CVE}</Text>)}
+                                    </DataList.Value>
+                                </Flex>
                             </DataList.Item>
 
                             <DataList.Item>
-                                <DataList.Label minWidth="88px">Прикрепленные файлы</DataList.Label>
-                                <DataList.Value>
-                                    <Flex gap="2">
-                                        {files.map((file) => (
-                                            <Link asChild key={file.id} to={file.url}>
-                                                <Badge key={file.id}>{file.name}</Badge>
-                                            </Link>
-                                        ))}
-                                    </Flex>
-                                </DataList.Value>
+                                <DataList.Label minWidth="88px">BDU</DataList.Label>
+                                <Flex asChild gap="2">
+                                    <DataList.Value>
+                                        {task.BDU?.map((bdu, i) => <Text key={`${bdu}:${i.toString()}`}>{bdu}</Text>)}
+                                    </DataList.Value>
+                                </Flex>
                             </DataList.Item>
                         </DataList.Root>
                         {!(actions == null) && actions(task)}
                     </Flex>
                 </Card>
             ))}
+            {tasks.length === 0 && <Text ml="3">Отсутствуют элементы</Text>}
         </Flex>
     );
 }

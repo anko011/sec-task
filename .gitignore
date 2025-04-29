@@ -2,6 +2,11 @@
 
 # Dependencies
 node_modules
+server/node_modules
+server/.env
+server/dist
+client/node_modules
+client/dist
 .pnp
 .pnp.js
 

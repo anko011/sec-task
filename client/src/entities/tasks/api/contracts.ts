@@ -1,4 +1,4 @@
-import { array, boolean, enums, object, string } from 'superstruct';
+import { array, boolean, enums, object, optional, string } from 'superstruct';
 
 import { GetTaskCategoryContract } from '~/entities/task-categories/@x/tasks';
 
@@ -8,21 +8,17 @@ export const GetTaskContract = object({
     id: string(),
     description: string(),
     name: string(),
+    additionalInformation: optional(string()),
     assigneeProgresses: array(
         object({
-            assignee: object({
+            organization: object({
                 id: string(),
-                firstName: string(),
-                organization: object({
+                type: object({
                     id: string(),
-                    type: object({
-                        id: string(),
-                        name: string()
-                    }),
-                    name: string(),
-                    isArchived: boolean()
+                    name: string()
                 }),
-                secondName: string()
+                name: string(),
+                isArchived: boolean()
             }),
             status: enums([
                 TaskStatus.NEW,
@@ -33,13 +29,16 @@ export const GetTaskContract = object({
             ])
         })
     ),
+    BDU: array(string()),
     category: GetTaskCategoryContract,
+    CVE: array(string()),
     dangerStatus: enums([
         TaskDangerStatus.CRITICAL,
         TaskDangerStatus.HIGH,
         TaskDangerStatus.MEDIUM,
         TaskDangerStatus.LOW
     ]),
+    number: string(),
     packageId: string()
 });
 

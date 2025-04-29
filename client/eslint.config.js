@@ -117,7 +117,7 @@ export default tseslint.config(
             'no-else-return': 'error',
             'no-fallthrough': ['error', { commentPattern: '.*intentional fallthrough.*' }],
             'no-implicit-coercion': ['error', { allow: ['!!'] }],
-            'no-mixed-operators': 'warn',
+            'no-mixed-operators': 'off',
             'no-process-exit': 'error',
             'no-undef': 'off',
             'one-var': ['error', 'never'],
