@@ -1,24 +1,44 @@
-import { IsEnum, IsString, MinLength } from 'class-validator';
-import { TaskDangerStatus } from '../../application/entities';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsArray, IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import { TaskDangerStatus } from '../../application/entities';
 
 export class CreateTaskDTO {
-  @IsString()
-  @MinLength(1)
   @ApiProperty()
-  public name: string;
-
   @IsString()
-  @MinLength(1)
-  @ApiProperty()
-  public description: string;
+  readonly additionalInformation?: string;
 
+  @ApiProperty()
+  @IsNotEmpty()
   @IsString()
-  @MinLength(1)
-  @ApiProperty()
-  public categoryId: string;
+  readonly nameId: string;
 
+  @ApiProperty()
+  @IsNotEmpty()
+  @IsString()
+  readonly number: string;
+
+  @ApiProperty()
+  @IsNotEmpty()
+  @IsString()
+  readonly description: string;
+
+  @ApiProperty()
+  @IsNotEmpty()
   @IsEnum(TaskDangerStatus)
+  readonly dangerStatus: TaskDangerStatus;
+
   @ApiProperty()
-  public dangerStatus: TaskDangerStatus;
+  @IsNotEmpty()
+  @IsString()
+  readonly categoryId: string;
+
+  @ApiProperty()
+  @IsArray()
+  @IsString({ each: true })
+  readonly BDU: string[];
+
+  @ApiProperty()
+  @IsArray()
+  @IsString({ each: true })
+  readonly CVE: string[];
 }

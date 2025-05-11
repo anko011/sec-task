@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Exclude } from 'class-transformer';
 
 export enum Role {
   Admin = 'admin',
@@ -8,24 +9,27 @@ export enum Role {
 
 export class User {
   @ApiProperty()
-  public readonly id: string;
+  public id: string;
 
   @ApiProperty()
-  public readonly firstName: string;
+  public firstName: string;
 
   @ApiProperty()
-  public readonly secondName: string;
+  public secondName: string;
 
   @ApiProperty()
-  public readonly patronymic: string;
+  public patronymic: string;
 
   @ApiProperty()
-  public readonly email: string;
+  public email: string;
 
   @ApiProperty()
-  public readonly role: Role;
+  public role: Role;
 
   @ApiProperty()
+  organizationId: string;
+
+  @Exclude()
   public readonly password: string;
 
   constructor(
@@ -36,6 +40,7 @@ export class User {
     email: string,
     role: Role,
     password: string,
+    organizationId: string,
   ) {
     this.id = id;
     this.firstName = firstName;
@@ -44,5 +49,6 @@ export class User {
     this.email = email;
     this.role = role;
     this.password = password;
+    this.organizationId = organizationId;
   }
 }

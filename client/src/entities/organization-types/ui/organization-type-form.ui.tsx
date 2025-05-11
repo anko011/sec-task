@@ -1,33 +1,33 @@
-import { Flex, Text, TextField } from '@radix-ui/themes';
-import type { FormEventHandler } from 'react';
+import { Flex, TextField } from '@radix-ui/themes';
+import type { ReactNode } from 'react';
+import { useActionState } from 'react';
+
+import { FormField } from '~/shared/ui/form-field';
 
 import type { OrganizationType } from '../model';
 
+export type OrganizationTypeFormState = { isSuccess: boolean } & Partial<Omit<OrganizationType, 'id'>>;
+
 export type OrganizationTypeFormProps = {
-    formId: string;
-    onSubmit?: () => void;
-    organizationType?: OrganizationType | null;
+    action: (prevState: OrganizationTypeFormState, formData: FormData) => Promise<OrganizationTypeFormState>;
+    end?: ReactNode;
+    organizationType?: OrganizationType;
 };
 
-export function OrganizationTypeForm({ formId, onSubmit, organizationType }: OrganizationTypeFormProps) {
-    const handleSubmit: FormEventHandler = (e) => {
-        e.preventDefault();
-        onSubmit?.();
-    };
-
+export function OrganizationTypeForm({ action, end, organizationType }: OrganizationTypeFormProps) {
+    const [state, dispatch] = useActionState(action, { isSuccess: true });
     return (
-        <form id={formId} onSubmit={handleSubmit}>
-            <Flex direction="column" gap="3">
-                <label>
-                    <Text as="div" mb="1" size="2" weight="bold">
-                        Название типа организации
-                    </Text>
+        <Flex asChild direction="column" gap="2">
+            <form action={dispatch}>
+                <FormField error={state.name} label="Наименование">
                     <TextField.Root
                         defaultValue={organizationType?.name}
-                        placeholder="Введите название типа организации"
+                        name="name"
+                        placeholder="Введите наименование типа организации"
                     />
-                </label>
-            </Flex>
-        </form>
+                </FormField>
+                {end}
+            </form>
+        </Flex>
     );
 }

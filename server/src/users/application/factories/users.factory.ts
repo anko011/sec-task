@@ -1,15 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
-import { Role, User } from '../entities';
+import { User } from '../entities';
 
-type UserProperties = {
-  readonly firstName: string;
-  readonly secondName: string;
-  readonly patronymic: string;
-  readonly email: string;
-  readonly role: Role;
-  readonly password: string;
-};
+type UserProperties = Omit<User, 'id'>;
 
 @Injectable()
 export class UsersFactory {
@@ -23,6 +16,7 @@ export class UsersFactory {
       props.email,
       props.role,
       props.password,
+      props.organizationId,
     );
   }
 }

@@ -1,46 +1,40 @@
 import { assert } from 'superstruct';
 
-import { taskCategories } from '../mock';
-import type { TaskCategory } from '../model/task-category';
-import { GetAllTaskCategoriesContract, GetTaskCategoryContract } from './contracts';
+import type { Organization } from '~/entities/organizations';
+import type { Paginated } from '~/shared/api';
+import { axiosInstance } from '~/shared/api';
 
-type TaskCategoryFilterCriteria = {
-    id?: string;
-    name?: string;
-};
+import type { TaskCategory } from '../model';
+import { GetPaginatedTaskCategoriesContract } from './contracts';
 
-export namespace TaskCategoriesRepository {
-    export async function getById(id: string): Promise<TaskCategory> {
-        const res = new Promise((resolve) =>
-            setTimeout(() => {
-                resolve(taskCategories[id as keyof typeof taskCategories]);
-            }, 1000)
-        );
-        const data = await res;
-        assert(data, GetTaskCategoryContract);
-        return data as TaskCategory;
-    }
+export async function findAllTaskCategories(
+    params?: URLSearchParams,
+    abort?: AbortController
+): Promise<Paginated<TaskCategory>> {
+    const { data } = await axiosInstance.get<unknown>('task-categories', { params, signal: abort?.signal });
+    assert(data, GetPaginatedTaskCategoriesContract);
+    return data as Paginated<TaskCategory>;
+}
 
-    export async function findAll(where?: TaskCategoryFilterCriteria): Promise<TaskCategory[]> {
-        const res = new Promise((resolve) =>
-            setTimeout(() => {
-                let data = Array.from(Object.values(taskCategories));
+export async function createTaskCategory(data: Record<string, FormDataEntryValue>, abort?: AbortController) {
+    const response = await axiosInstance.post<TaskCategory>('task-categories', data, { signal: abort?.signal });
+    return response.data;
+}
 
-                if (where != null) {
-                    data = data.filter((item) => {
-                        const idMatch = where.id === undefined || item.id.includes(where.id);
+export async function updateTaskCategory(
+    taskCategoryId: string,
+    data: Record<string, FormDataEntryValue>,
+    abort?: AbortController
+) {
+    const response = await axiosInstance.patch<Organization>(`task-categories/${taskCategoryId}`, data, {
+        signal: abort?.signal
+    });
+    return response.data;
+}
 
-                        const nameMatch =
-                            where.name === undefined || item.name.toLowerCase().includes(where.name.toLowerCase());
-
-                        return idMatch && nameMatch;
-                    });
-                }
-                resolve(data);
-            }, 500)
-        );
-        const data = await res;
-        assert(data, GetAllTaskCategoriesContract);
-        return data as TaskCategory[];
-    }
+export async function deleteTaskCategory(taskCategoryId: string, abort?: AbortController) {
+    const response = await axiosInstance.delete<undefined>(`task-categories/${taskCategoryId}`, {
+        signal: abort?.signal
+    });
+    return response.data;
 }

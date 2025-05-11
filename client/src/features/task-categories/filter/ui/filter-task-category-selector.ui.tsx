@@ -1,9 +1,9 @@
 import { Flex, Select, Text } from '@radix-ui/themes';
 import { use } from 'react';
 
-import { TaskCategoriesRepository } from '~/entities/task-categories';
+import type { TaskCategory } from '~/entities/task-categories';
 
-const data = TaskCategoriesRepository.findAll();
+const data: Promise<TaskCategory[]> = Promise.resolve([]);
 
 export function FilterTaskCategorySelector() {
     const categories = use(data);

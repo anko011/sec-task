@@ -1,8 +1,10 @@
-import { array, object, string } from 'superstruct';
+import { object, string } from 'superstruct';
 
-export const GetOrganizationTypeByIdContract = object({
+import { paginated } from '~/shared/api';
+
+export const GetOrganizationTypeContract = object({
     id: string(),
     name: string()
 });
 
-export const GetAllOrganizationTypesContract = array(GetOrganizationTypeByIdContract);
+export const GetPaginatedOrganizationTypesContract = paginated(GetOrganizationTypeContract);

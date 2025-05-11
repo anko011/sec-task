@@ -4,12 +4,13 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { JwtService, TokenExpiredError } from '@nestjs/jwt';
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
 
 import { IS_PUBLIC_KEY } from '../decorators';
 import { ConfigService } from '@nestjs/config';
+import { UsersPort } from '../../../users/application/ports';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -17,6 +18,7 @@ export class AuthGuard implements CanActivate {
     private readonly jwtService: JwtService,
     private readonly reflector: Reflector,
     private readonly configService: ConfigService,
+    private readonly usersPort: UsersPort,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -28,17 +30,28 @@ export class AuthGuard implements CanActivate {
     if (isPublic) return true;
 
     const request = context.switchToHttp().getRequest();
-    const token = this.extractTokenFromHeader(request);
+    const accessToken = this.extractTokenFromHeader(request);
 
-    if (!token) throw new UnauthorizedException('Authorization failed');
+    if (!accessToken) throw new UnauthorizedException('Authorization failed');
 
+    let userId: string | undefined = undefined;
     try {
-      request['user'] = await this.jwtService.verifyAsync(token, {
+      const token = await this.jwtService.verifyAsync(accessToken, {
         secret: this.configService.get<string>('AUTH_SECRET'),
       });
-    } catch {
-      throw new UnauthorizedException('Invalid token');
+
+      userId = token.sub;
+    } catch (err) {
+      if (err instanceof TokenExpiredError)
+        throw new UnauthorizedException('Token expired');
+
+      throw err;
     }
+    const users = await this.usersPort.find({ id: userId });
+    if (users.length !== 1) throw new UnauthorizedException(`Invalid data`);
+
+    request['user'] = users[0];
+
     return true;
   }
 

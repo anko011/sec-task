@@ -1,7 +1,15 @@
-import { FindPaginatedUsersQueryHandler } from './find-paginated-users.query-handler';
-import { FindUserQueryHandler } from './find-user.query-handler';
+import { FindPaginatedUsersQueryHandler } from './find-paginated-users.handler';
+import { FindUserQueryHandler } from './find-user.handler';
+import { FindPaginatedUsersWithOrganizationQueryHandler } from './find-paginated-users-with-organization.handler';
 
 export { FindUserQuery } from './find-user.query';
 export { FindPaginatedUsersQuery } from './find-paginated-users.query';
+export { FindPaginatedUsersWithOrganizationQuery } from './find-paginated-users-with-organization.query';
 
-export const handlers = [FindPaginatedUsersQueryHandler, FindUserQueryHandler];
+export * from './dtos';
+
+export const handlers = [
+  FindPaginatedUsersQueryHandler,
+  FindUserQueryHandler,
+  FindPaginatedUsersWithOrganizationQueryHandler,
+];

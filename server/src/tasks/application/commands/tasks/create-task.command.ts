@@ -1,14 +1,14 @@
 import { ICommand } from '@nestjs/cqrs';
-import { TaskDangerStatus } from '../../entities';
+import { CreateTaskDTO as EntityCreateTaskDTO } from '../../entities/task-package';
+
+type CreateTaskDTO = Omit<EntityCreateTaskDTO, 'category' | 'name'> & {
+  categoryId: string;
+  nameId: string;
+};
 
 export class CreateTaskCommand implements ICommand {
-  public constructor(
-    public readonly dto: {
-      readonly name: string;
-      readonly description: string;
-      readonly packageId: string;
-      readonly categoryId: string;
-      readonly dangerStatus: TaskDangerStatus;
-    },
+  constructor(
+    readonly packageId: string,
+    readonly dto: CreateTaskDTO,
   ) {}
 }

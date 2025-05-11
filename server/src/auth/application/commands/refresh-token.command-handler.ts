@@ -1,42 +1,31 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { UnauthorizedException } from '@nestjs/common';
-
-import { UsersStorePort } from '../../../users/application/ports';
-
-import { JwtServicePort, TokensStorePort } from '../ports';
-
+import { JwtServicePort } from '../ports';
 import { RefreshTokenCommand } from './refresh-token.command';
+import { TokenExpiredError } from '@nestjs/jwt';
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { JsonWebTokenError } from 'jsonwebtoken';
 
 @CommandHandler(RefreshTokenCommand)
 export class RefreshTokenCommandHandler
   implements ICommandHandler<RefreshTokenCommand>
 {
-  constructor(
-    private readonly tokensStorePort: TokensStorePort,
-    private readonly jwtServicePort: JwtServicePort,
-    private readonly usersStorePort: UsersStorePort,
-  ) {}
+  constructor(private readonly jwtServicePort: JwtServicePort) {}
 
-  async execute({ refreshToken: oldRefreshToken }: RefreshTokenCommand) {
-    const { sub: userId } = await this.jwtServicePort.verify(oldRefreshToken);
+  async execute({ refreshToken }: RefreshTokenCommand) {
+    try {
+      const payload = await this.jwtServicePort.verify(refreshToken);
+      return await this.jwtServicePort.createAccessToken({
+        sub: payload.sub,
+        role: payload.role,
+      });
+    } catch (e) {
+      if (e instanceof TokenExpiredError)
+        throw new UnauthorizedException('Token expired');
 
-    const user = await this.usersStorePort.findOne({ id: userId });
-    if (!user) throw new UnauthorizedException('Invalid refresh token');
+      if (e instanceof JsonWebTokenError)
+        throw new BadRequestException(e.message);
 
-    const isExists = await this.tokensStorePort.isExists(
-      user.id,
-      oldRefreshToken,
-    );
-
-    if (!isExists) throw new UnauthorizedException('Invalid refresh token');
-
-    const payload = { sub: user.id, role: user.role };
-    const { accessToken, refreshToken } =
-      await this.jwtServicePort.createTokenPair(payload, '7d');
-
-    await this.tokensStorePort.remove(userId, oldRefreshToken);
-    await this.tokensStorePort.save(userId, refreshToken, '7d');
-
-    return { accessToken, refreshToken };
+      throw e;
+    }
   }
 }

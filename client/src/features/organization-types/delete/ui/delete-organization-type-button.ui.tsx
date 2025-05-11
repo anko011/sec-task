@@ -1,7 +1,8 @@
-import { TrashIcon } from '@radix-ui/react-icons';
+import { Strong, Text } from '@radix-ui/themes';
 
 import type { OrganizationType } from '~/entities/organization-types';
-import { AlertDialogButton } from '~/shared/ui/alert-dialog-button';
+import { DeleteOrganizationTypeForm } from '~/features/organization-types/delete/ui/delete-organization-type-form.ui';
+import { DeleteEntityDialog } from '~/shared/ui/delete-entity-dialog';
 
 export type DeleteOrganizationTypeButtonProps = {
     organizationType: OrganizationType;
@@ -9,13 +10,22 @@ export type DeleteOrganizationTypeButtonProps = {
 
 export function DeleteOrganizationTypeButton({ organizationType }: DeleteOrganizationTypeButtonProps) {
     return (
-        <AlertDialogButton
-            color="red"
-            dialogTitle="Удаление типа организации"
-            icon={<TrashIcon />}
-            tooltip="Удалить тип организации"
-        >
-            Вы действительно хотите удалить тип организации "{organizationType.name}"?
-        </AlertDialogButton>
+        <DeleteEntityDialog.Root confirmation={organizationType.name} title="Удаление типа организации">
+            <DeleteEntityDialog.Trigger tooltip="Удалить тип организацию" />
+            <DeleteEntityDialog.Content>
+                <DeleteOrganizationTypeForm
+                    end={
+                        <>
+                            <Text>
+                                Для удаления введите: <Strong>{organizationType.name}</Strong>
+                            </Text>
+                            <DeleteEntityDialog.ConfirmationField />
+                            <DeleteEntityDialog.Controller />
+                        </>
+                    }
+                    organizationType={organizationType}
+                />
+            </DeleteEntityDialog.Content>
+        </DeleteEntityDialog.Root>
     );
 }

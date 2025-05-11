@@ -1,20 +1,12 @@
 import '@radix-ui/themes/styles.css';
 import './styles.css';
 
-import { BrowserRouter } from 'react-router';
+import { RouterProvider } from 'react-router';
 
-import { ThemeProvider } from '~/features/themes/change';
-
-import { ApplicationRouter } from './router';
+import { router } from './router';
 
 function App() {
-    return (
-        <ThemeProvider>
-            <BrowserRouter>
-                <ApplicationRouter />
-            </BrowserRouter>
-        </ThemeProvider>
-    );
+    return <RouterProvider router={router} />;
 }
 
 export default App;

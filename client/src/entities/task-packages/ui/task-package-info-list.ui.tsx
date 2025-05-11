@@ -32,7 +32,7 @@ export function TaskPackageInfoList({ data, ...props }: TaskPackageInfoListProps
             </DataList.Item>
             <DataList.Item>
                 <DataList.Label>Количество задач</DataList.Label>
-                <DataList.Value>{taskPackage.tasksNumber}</DataList.Value>
+                <DataList.Value>{taskPackage.tasksCount}</DataList.Value>
             </DataList.Item>
             <DataList.Item>
                 <DataList.Label>Документы</DataList.Label>

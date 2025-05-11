@@ -1,63 +1,89 @@
-import { Flex, Select, Text, TextField } from '@radix-ui/themes';
-import { Suspense, use, useState } from 'react';
+import { Select, TextField, Tooltip } from '@radix-ui/themes';
+import type { ChangeEventHandler } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
+import useSWR from 'swr';
+import { useDebouncedCallback } from 'use-debounce';
 
-import { TaskCategoriesRepository } from '~/entities/task-categories';
+import type { TaskCategory } from '~/entities/task-categories';
+import { findAllTaskCategories } from '~/entities/task-categories';
 import { Loader } from '~/shared/ui/loader';
-
-import type { TaskCategory } from '../model/task-category';
 
 export type TaskCategoriesSelectorProps = {
     name?: string;
     defaultValue?: string;
-    onChange?: (category?: TaskCategory) => void;
+    onChange?: (type: TaskCategory | undefined) => void;
 };
 
-function Items({ data }: { data: Promise<TaskCategory[]> }) {
-    const types = use(data);
-    return (
-        <>
-            {types.map((category) => (
-                <Select.Item key={category.id} value={category.id}>
-                    {category.name}
-                </Select.Item>
-            ))}
-        </>
+export const TaskCategoriesSelector = memo(function ({
+    name,
+    defaultValue = '-1',
+    onChange
+}: TaskCategoriesSelectorProps) {
+    const [categoryName, setCategoryName] = useState('');
+    const [currentValue, setCurrentValue] = useState<TaskCategory | undefined>();
+
+    const ref = useRef<HTMLButtonElement | null>(null);
+
+    useEffect(() => {
+        const form = ref.current?.form;
+
+        const handler = () => {
+            setCategoryName('');
+            setCurrentValue(undefined);
+        };
+        form?.addEventListener('reset', handler);
+        return () => {
+            form?.removeEventListener('reset', handler);
+        };
+    }, []);
+
+    const { data, isLoading } = useSWR(`task-categories?name?=${categoryName}`, () =>
+        findAllTaskCategories(new URLSearchParams([['name', categoryName]]))
     );
-}
 
-export function TaskCategoriesSelector({ name: formName, defaultValue, onChange }: TaskCategoriesSelectorProps) {
-    const [name, setName] = useState('');
-    const categories = TaskCategoriesRepository.findAll({ name });
+    const onCategoryNameChange = useDebouncedCallback<ChangeEventHandler<HTMLInputElement>>((e) => {
+        setCategoryName(e.target.value);
+    }, 350);
 
-    const handleChangeStatus = (value: string) => {
-        setName('');
-        void categories.then((categories) => {
-            const category = categories.find(({ id }) => id === value);
-            onChange?.(category);
-        });
+    const onValueChange = (value: string) => {
+        if (value === '-1') {
+            setCategoryName('');
+            setCurrentValue(undefined);
+            onChange?.(undefined);
+        } else {
+            const type = data?.items.find((item) => item.id === value);
+            setCurrentValue(type);
+            onChange?.(type);
+        }
     };
 
     return (
-        <Flex align="center" asChild gap="2">
-            <label>
-                <Text size="2">Тип организации</Text>
-                <Select.Root defaultValue={defaultValue ?? '-1'} onValueChange={handleChangeStatus}>
-                    <Select.Trigger />
-                    <Select.Content>
-                        <TextField.Root
-                            name={formName}
-                            onChange={(e) => {
-                                setName(e.target.value);
-                            }}
-                            placeholder="Введите название типа"
-                        />
-                        <Select.Item value="-1">Не выбрано</Select.Item>
-                        <Suspense fallback={<Loader />}>
-                            <Items data={categories} />
-                        </Suspense>
-                    </Select.Content>
-                </Select.Root>
-            </label>
-        </Flex>
+        <Select.Root name={name} onValueChange={onValueChange} value={currentValue?.id ?? defaultValue}>
+            <Select.Trigger ref={ref} />
+            <Select.Content>
+                <TextField.Root onChange={onCategoryNameChange} placeholder="Введите название категории" />
+                <Select.Item textValue="" value="-1">
+                    Не выбрано
+                </Select.Item>
+                {currentValue !== undefined && (
+                    <Select.Item textValue="$" value={currentValue.id}>
+                        {currentValue.name}
+                    </Select.Item>
+                )}
+                {isLoading ? (
+                    <Loader />
+                ) : (
+                    data?.items
+                        .filter((item) => item.id !== currentValue?.id)
+                        .map((item) => (
+                            <Tooltip content={item.name} key={item.id}>
+                                <Select.Item textValue="$" value={item.id}>
+                                    {item.name}
+                                </Select.Item>
+                            </Tooltip>
+                        ))
+                )}
+            </Select.Content>
+        </Select.Root>
     );
-}
+});

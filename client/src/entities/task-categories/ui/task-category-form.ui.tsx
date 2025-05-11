@@ -1,34 +1,33 @@
-import { Flex, Select, Text, TextField } from '@radix-ui/themes';
-import type { FormEventHandler } from 'react';
+import { Flex, Select, TextField } from '@radix-ui/themes';
+import { type ReactNode, useActionState } from 'react';
+
+import { FormField } from '~/shared/ui/form-field';
 
 import type { TaskCategory } from '../model/task-category';
 
+export type TaskCategoryFormState = { isSuccess: boolean } & Partial<Omit<TaskCategory, 'id'>>;
+
 export type TaskCategoryFormProps = {
-    category?: TaskCategory | null;
-    formId: string;
-    onSubmit?: () => void;
+    action: (prevState: TaskCategoryFormState, formData: FormData) => Promise<TaskCategoryFormState>;
+    end?: ReactNode;
+    taskCategory?: TaskCategory;
 };
 
-export function TaskCategoryForm({ category, formId, onSubmit }: TaskCategoryFormProps) {
-    const handleSubmit: FormEventHandler = (e) => {
-        e.preventDefault();
-        onSubmit?.();
-    };
+export function TaskCategoryForm({ action, end, taskCategory }: TaskCategoryFormProps) {
+    const [state, dispatch] = useActionState(action, { isSuccess: true });
 
     return (
-        <form id={formId} onSubmit={handleSubmit}>
-            <Flex direction="column" gap="3">
-                <label>
-                    <Text as="div" mb="1" size="2" weight="bold">
-                        Название категории
-                    </Text>
-                    <TextField.Root defaultValue={category?.name} placeholder="Введите название категории" />
-                </label>
-                <label>
-                    <Text as="div" mb="1" size="2" weight="bold">
-                        Цвет категории
-                    </Text>
-                    <Select.Root defaultValue={category?.color ?? 'red'}>
+        <Flex asChild direction="column" gap="2">
+            <form action={dispatch}>
+                <FormField error={state.name} label="Название">
+                    <TextField.Root
+                        defaultValue={taskCategory?.name}
+                        name="name"
+                        placeholder="Муниципальное учреждение"
+                    />
+                </FormField>
+                <FormField error={state.color} label="Цвет категории">
+                    <Select.Root defaultValue={taskCategory?.color ?? 'red'} name="color">
                         <Select.Trigger />
                         <Select.Content>
                             <Select.Item value="red">Красный</Select.Item>
@@ -40,8 +39,9 @@ export function TaskCategoryForm({ category, formId, onSubmit }: TaskCategoryFor
                             <Select.Item value="cyan">Голубой</Select.Item>
                         </Select.Content>
                     </Select.Root>
-                </label>
-            </Flex>
-        </form>
+                </FormField>
+                {end}
+            </form>
+        </Flex>
     );
 }

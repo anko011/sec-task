@@ -1,5 +1,6 @@
 import type { Organization } from '~/entities/organizations';
-import type { TaskCategory } from '~/entities/task-categories/@x/tasks';
+import type { TaskCategory } from '~/entities/task-categories';
+import type { TaskName } from '~/entities/task-names';
 
 export enum TaskStatus {
     COMPENSATED = 'COMPENSATED',
@@ -24,13 +25,19 @@ export type TaskProgress = {
 export type Task = {
     id: string;
     description: string;
-    name: string;
+    name: TaskName;
     additionalInformation?: string;
-    assigneeProgresses: TaskProgress[];
     BDU?: string[];
     category: TaskCategory;
+    createdAt: Date;
     CVE?: string[];
     dangerStatus: TaskDangerStatus;
+    deadline: Date;
     number: string;
-    packageId: string;
+    progress: {
+        completed: number;
+        percentage: number;
+        total: number;
+    };
+    status: TaskStatus;
 };

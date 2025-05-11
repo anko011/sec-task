@@ -1,15 +1,35 @@
-import { IsOptional, IsString, IsUrl, MinLength } from 'class-validator';
+import { TaskPackageStatus } from '../../application/entities';
+import {
+  IsArray,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class UpdateTaskPackageDTO {
+  @ApiProperty()
+  @IsNotEmpty()
   @IsString()
-  @MinLength(1)
   @IsOptional()
-  @ApiProperty()
-  public name?: string;
+  readonly incomingRequisite?: string;
 
-  @IsUrl()
-  @IsOptional()
   @ApiProperty()
-  readonly baseDocument?: string;
+  @IsNotEmpty()
+  @IsString()
+  @IsOptional()
+  readonly outgoingRequisite?: string;
+
+  @ApiProperty()
+  @IsNotEmpty()
+  @IsEnum(TaskPackageStatus)
+  @IsOptional()
+  readonly status?: TaskPackageStatus;
+
+  @ApiProperty()
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  readonly assignedOrganizationIds?: string[];
 }

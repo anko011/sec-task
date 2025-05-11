@@ -1,32 +1,46 @@
-import {
-  IsEnum,
-  IsOptional,
-  IsString,
-  IsUUID,
-  MinLength,
-} from 'class-validator';
-import { TaskCategory, TaskDangerStatus } from '../../application/entities';
+import { IsArray, IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { TaskDangerStatus } from '../../application/entities';
 
 export class UpdateTaskDTO {
   @IsString()
-  @MinLength(1)
-  @IsOptional()
-  public name?: string;
+  @IsNotEmpty()
+  readonly additionalInformation?: string;
 
-  @IsUUID(4)
-  @IsOptional()
-  public readonly packageId?: string;
-
+  @ApiProperty()
   @IsString()
-  @MinLength(1)
-  @IsOptional()
-  public description?: string;
+  @IsNotEmpty()
+  readonly nameId?: string;
 
-  @IsEnum(TaskCategory)
-  @IsOptional()
-  public category?: TaskCategory;
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  readonly number?: string;
 
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  readonly description?: string;
+
+  @ApiProperty()
+  @IsNotEmpty()
   @IsEnum(TaskDangerStatus)
-  @IsOptional()
-  public dangerStatus?: TaskDangerStatus;
+  readonly dangerStatus?: TaskDangerStatus;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  readonly categoryId?: string;
+
+  @ApiProperty()
+  @IsArray()
+  @IsString({ each: true })
+  @IsNotEmpty({ each: true })
+  readonly BDU?: string[];
+
+  @ApiProperty()
+  @IsArray()
+  @IsString({ each: true })
+  @IsNotEmpty({ each: true })
+  readonly CVE?: string[];
 }

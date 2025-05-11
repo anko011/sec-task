@@ -1,3 +1,5 @@
+import type { Task } from '~/entities/tasks';
+
 export enum TaskPackageStatus {
     ACTIVE = 'ACTIVE',
     FIXED = 'FIXED'
@@ -10,10 +12,17 @@ export type BaseDocument = {
 
 export type TaskPackage = {
     id: string;
-    name: string;
-    baseDocument: BaseDocument;
+    assignedOrganizationCount: number;
+    assignedOrganizationIds: string[];
+    createdAt: Date;
     incomingRequisite: string;
     outgoingRequisite: string;
+    reportDeadline: {
+        deadline: Date;
+        needsPostpone: boolean;
+    };
     status: TaskPackageStatus;
-    tasksNumber: number;
+    submissionData: Date;
+    tasks: Task[];
+    tasksCount: number;
 };

@@ -1,36 +1,21 @@
-import { array, boolean, enums, object, optional, string } from 'superstruct';
+import { array, enums, number, object, optional, string } from 'superstruct';
 
-import { GetTaskCategoryContract } from '~/entities/task-categories/@x/tasks';
+import { GetTaskCategoryContract } from '~/entities/task-categories';
+import { paginated } from '~/shared/api';
 
 import { TaskDangerStatus, TaskStatus } from '../model/task';
 
 export const GetTaskContract = object({
     id: string(),
     description: string(),
-    name: string(),
+    name: object({
+        id: string(),
+        name: string()
+    }),
     additionalInformation: optional(string()),
-    assigneeProgresses: array(
-        object({
-            organization: object({
-                id: string(),
-                type: object({
-                    id: string(),
-                    name: string()
-                }),
-                name: string(),
-                isArchived: boolean()
-            }),
-            status: enums([
-                TaskStatus.NEW,
-                TaskStatus.IN_PROGRESS,
-                TaskStatus.COMPLETED,
-                TaskStatus.COMPENSATED,
-                TaskStatus.NO_ACTUAL
-            ])
-        })
-    ),
     BDU: array(string()),
     category: GetTaskCategoryContract,
+    createdAt: string(),
     CVE: array(string()),
     dangerStatus: enums([
         TaskDangerStatus.CRITICAL,
@@ -38,8 +23,16 @@ export const GetTaskContract = object({
         TaskDangerStatus.MEDIUM,
         TaskDangerStatus.LOW
     ]),
+    deadline: string(),
     number: string(),
-    packageId: string()
+    progress: object({
+        completed: number(),
+        percentage: number(),
+        total: number()
+    }),
+    status: enums(Object.values(TaskStatus))
 });
+
+export const GetPaginatedTasksContract = paginated(GetTaskContract);
 
 export const GetTasksContract = array(GetTaskContract);

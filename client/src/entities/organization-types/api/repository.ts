@@ -1,31 +1,35 @@
 import { assert } from 'superstruct';
 
-import { organizationTypes } from '../mock';
+import { axiosInstance } from '~/shared/api';
+
 import type { OrganizationType } from '../model';
-import { GetAllOrganizationTypesContract } from './contract';
+import { GetPaginatedOrganizationTypesContract } from './contract';
 
-export namespace OrganizationTypesRepository {
-    export async function findAll(where?: { id?: string; name?: string }): Promise<OrganizationType[]> {
-        const res = new Promise((res) =>
-            setTimeout(() => {
-                let data = Array.from(Object.values(organizationTypes));
+export async function findAllOrganizationTypes(params?: URLSearchParams, abort?: AbortController) {
+    const { data } = await axiosInstance.get<unknown>('organization-types', { params, signal: abort?.signal });
+    assert(data, GetPaginatedOrganizationTypesContract);
+    return data;
+}
 
-                if (where != null) {
-                    data = data.filter((item) => {
-                        const idMatch = where.id === undefined || item.id.includes(where.id);
+export async function createOrganizationType(data: Record<string, FormDataEntryValue>, abort?: AbortController) {
+    const response = await axiosInstance.post<OrganizationType>('organization-types', data, { signal: abort?.signal });
+    return response.data;
+}
 
-                        const nameMatch =
-                            where.name === undefined || item.name.toLowerCase().includes(where.name.toLowerCase());
+export async function updateOrganizationType(
+    organizationTypeId: string,
+    data: Record<string, FormDataEntryValue>,
+    abort?: AbortController
+) {
+    const response = await axiosInstance.patch<OrganizationType>(`organization-types/${organizationTypeId}`, data, {
+        signal: abort?.signal
+    });
+    return response.data;
+}
 
-                        return idMatch && nameMatch;
-                    });
-                }
-
-                res(data);
-            }, 1000)
-        );
-        const data = await res;
-        assert(data, GetAllOrganizationTypesContract);
-        return data;
-    }
+export async function deleteOrganizationType(organizationTypeId: string, abort?: AbortController) {
+    const response = await axiosInstance.delete<undefined>(`organization-types/${organizationTypeId}`, {
+        signal: abort?.signal
+    });
+    return response.data;
 }

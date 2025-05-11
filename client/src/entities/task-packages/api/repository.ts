@@ -1,10 +1,10 @@
 import { assert } from 'superstruct';
 
 import type { TaskPackage, TaskPackageStatus } from '~/entities/task-packages';
-import type { Paginated, PaginateOptions } from '~/shared/api';
+import type { Paginated } from '~/shared/api';
+import { axiosInstance } from '~/shared/api';
 
-import { taskPackages } from '../mock';
-import { GetAllTaskPackagesContract, GetTaskPackageContract } from './contract';
+import { GetPaginatedTaskPackagesContract } from './contract';
 
 type TaskPackagesFilterCriteria = {
     id?: string;
@@ -13,61 +13,44 @@ type TaskPackagesFilterCriteria = {
     status?: TaskPackageStatus;
 };
 
-export namespace TaskPackagesRepository {
-    export async function findAll(
-        where?: TaskPackagesFilterCriteria,
-        options?: PaginateOptions
-    ): Promise<Paginated<TaskPackage>> {
-        const res = new Promise<TaskPackage[]>((resolve) =>
-            setTimeout(() => {
-                let data = Array.from(Object.values(taskPackages));
+export async function findAllTaskPackages(
+    params?: URLSearchParams,
+    signal?: AbortSignal
+): Promise<Paginated<TaskPackage>> {
+    const response = await axiosInstance.get<Paginated<TaskPackage>>('task-packages', { params, signal });
+    assert(response.data, GetPaginatedTaskPackagesContract);
+    return {
+        ...response.data,
+        items: response.data.items.map((item) => ({
+            ...item,
+            createdAt: new Date(item.createdAt),
+            reportDeadline: { ...item.reportDeadline, deadline: new Date(item.reportDeadline.deadline) },
+            submissionData: new Date(item.submissionData)
+        }))
+    };
+}
 
-                if (where != null) {
-                    data = data.filter((item) => {
-                        const idMatch = where.id === undefined || item.id.includes(where.id);
+export async function getTaskPackageById(id: string, signal?: AbortSignal): Promise<TaskPackage> {
+    const response = await axiosInstance.get<TaskPackage>('task-packages/' + id, { signal });
+    return {
+        ...response.data,
+        createdAt: new Date(response.data.createdAt),
+        reportDeadline: { ...response.data.reportDeadline, deadline: new Date(response.data.reportDeadline.deadline) },
+        submissionData: new Date(response.data.submissionData)
+    } as TaskPackage;
+}
 
-                        const incomingMatch =
-                            where.incomingRequisite === undefined ||
-                            item.incomingRequisite.toLowerCase().includes(where.incomingRequisite.toLowerCase());
+export async function createTaskPackage(data?: Record<string, unknown>, signal?: AbortSignal) {
+    const response = await axiosInstance.post<TaskPackage>('task-packages', data, { signal });
+    return response.data;
+}
 
-                        const outgoingMatch =
-                            where.outgoingRequisite === undefined ||
-                            item.outgoingRequisite.toLowerCase().includes(where.outgoingRequisite.toLowerCase());
+export async function updateTaskPackage(id: string, data?: Record<string, unknown>, signal?: AbortSignal) {
+    const response = await axiosInstance.patch<TaskPackage>(`task-packages/${id}`, data, { signal });
+    return response.data;
+}
 
-                        const statusMatch = where.status === undefined || item.status === where.status;
-
-                        return idMatch && incomingMatch && outgoingMatch && statusMatch;
-                    });
-                }
-
-                resolve(data);
-            }, 1000)
-        );
-
-        const data = await res;
-        assert(data, GetAllTaskPackagesContract);
-
-        const limit = options?.limit ?? data.length;
-        const offset = options?.offset ?? 0;
-        const paginatedItems = data.slice(offset, offset + limit);
-
-        return {
-            items: paginatedItems,
-            limit,
-            offset,
-            total: data.length
-        };
-    }
-
-    export async function getById(id: string) {
-        const res = new Promise((res) =>
-            setTimeout(() => {
-                res(taskPackages[id as keyof typeof taskPackages]);
-            }, 1000)
-        );
-
-        const data = await res;
-        assert(data, GetTaskPackageContract);
-        return data;
-    }
+export async function deleteTaskPackage(id: string, signal?: AbortSignal) {
+    const response = await axiosInstance.delete<TaskPackage>(`task-packages/${id}`, { signal });
+    return response.data;
 }

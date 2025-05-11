@@ -10,21 +10,19 @@ import { FindPaginatedTaskPackagesQuery } from './find-paginated-task-packages.q
 export class FindPaginatedTaskPackagesQueryHandler
   implements IQueryHandler<FindPaginatedTaskPackagesQuery>
 {
-  public constructor(
-    private readonly taskPackagesRepository: TaskPackagesPort,
-  ) {}
+  constructor(private readonly taskPackagesPort: TaskPackagesPort) {}
 
-  public async execute({
+  async execute({
     where,
     options,
   }: FindPaginatedTaskPackagesQuery): Promise<Paginated<TaskPackage[]>> {
-    const [tasks, total] = await this.taskPackagesRepository.findAndCount(
-      where,
-      options,
-    );
+    const [items, total] = await Promise.all([
+      this.taskPackagesPort.find(where, options),
+      this.taskPackagesPort.count(where),
+    ]);
 
     return {
-      items: tasks,
+      items,
       total,
       limit: options?.limit ?? 10,
       offset: options?.offset ?? 0,

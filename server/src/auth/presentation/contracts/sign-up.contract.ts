@@ -26,4 +26,9 @@ export class SignUpDTO {
   @IsString()
   @IsNotEmpty()
   public readonly password: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  public readonly organizationId: string;
 }

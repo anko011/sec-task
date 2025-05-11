@@ -1,1 +1,1 @@
-export { UsersStorePort } from './users-store.port';
+export { UsersPort } from './users.port';

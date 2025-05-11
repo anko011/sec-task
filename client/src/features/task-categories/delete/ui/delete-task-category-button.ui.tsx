@@ -1,21 +1,32 @@
-import { TrashIcon } from '@radix-ui/react-icons';
+import { Strong, Text } from '@radix-ui/themes';
 
 import type { TaskCategory } from '~/entities/task-categories';
-import { AlertDialogButton } from '~/shared/ui/alert-dialog-button';
+import { DeleteEntityDialog } from '~/shared/ui/delete-entity-dialog';
 
-export type DeleteTaskCategoryButtonProps = {
-    category: TaskCategory;
+import { DeleteTaskCategoryForm } from './delete-task-category-form.ui';
+
+export type DeleteOrganizationButtonProps = {
+    taskCategory: TaskCategory;
 };
 
-export function DeleteTaskCategoryButton({ category }: DeleteTaskCategoryButtonProps) {
+export function DeleteTaskCategoryButton({ taskCategory }: DeleteOrganizationButtonProps) {
     return (
-        <AlertDialogButton
-            color="red"
-            dialogTitle="Удаление типа организации"
-            icon={<TrashIcon />}
-            tooltip="Удалить категорию задачи"
-        >
-            Вы действительно хотите удалить категорию "{category.name}"?
-        </AlertDialogButton>
+        <DeleteEntityDialog.Root confirmation={taskCategory.name} title="Удаление категории">
+            <DeleteEntityDialog.Trigger tooltip="Удалить категорию" />
+            <DeleteEntityDialog.Content>
+                <DeleteTaskCategoryForm
+                    end={
+                        <>
+                            <Text>
+                                Для удаления введите: <Strong>{taskCategory.name}</Strong>
+                            </Text>
+                            <DeleteEntityDialog.ConfirmationField />
+                            <DeleteEntityDialog.Controller />
+                        </>
+                    }
+                    taskCategory={taskCategory}
+                />
+            </DeleteEntityDialog.Content>
+        </DeleteEntityDialog.Root>
     );
 }

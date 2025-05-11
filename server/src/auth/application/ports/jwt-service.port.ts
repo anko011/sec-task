@@ -9,5 +9,7 @@ export abstract class JwtServicePort {
 
   abstract verify(refreshToken: string): Promise<{ sub: string; role: Role }>;
 
+  abstract decode(refreshToken: string): Promise<{ sub: string; role: Role }>;
+
   abstract createAccessToken(payload: Buffer | object): Promise<string>;
 }

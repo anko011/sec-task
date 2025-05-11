@@ -1,1 +1,1 @@
-export { DeleteTaskCategoryButton, type DeleteTaskCategoryButtonProps } from './ui/delete-task-category-button.ui';
+export { type DeleteOrganizationButtonProps, DeleteTaskCategoryButton } from './ui/delete-task-category-button.ui';

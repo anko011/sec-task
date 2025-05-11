@@ -1,58 +1,45 @@
-import { Checkbox, Flex, Select, Text, TextField } from '@radix-ui/themes';
-import type { FormEventHandler } from 'react';
-import { use } from 'react';
+import { Checkbox, Flex, TextField } from '@radix-ui/themes';
+import type { ReactNode } from 'react';
+import { useActionState } from 'react';
 
-import { OrganizationTypesRepository } from '~/entities/organization-types';
+import { OrganizationTypesSelector } from '~/entities/organization-types';
+import { FormField } from '~/shared/ui/form-field';
 
 import type { Organization } from '../model';
 
-export type OrganizationFormProps = {
-    formId: string;
-    onSubmit?: () => void;
-    organization?: Organization | null;
+export type OrganizationFormState = { isSuccess: boolean } & Partial<
+    Omit<Organization, 'id' | 'type' | 'isArchived'> & {
+        isArchived: string;
+        typeId: string;
+    }
+>;
+
+type OrganizationFormProps = {
+    action: (prevState: OrganizationFormState, formData: FormData) => Promise<OrganizationFormState>;
+    end?: ReactNode;
+    organization?: Organization;
 };
 
-const data = OrganizationTypesRepository.findAll();
-
-export function OrganizationForm({ formId, onSubmit, organization }: OrganizationFormProps) {
-    const organizationTypes = use(data);
-
-    const handleSubmit: FormEventHandler = (e) => {
-        e.preventDefault();
-        onSubmit?.();
-    };
-
+export function OrganizationForm({ action, end, organization }: OrganizationFormProps) {
+    const [state, dispatch] = useActionState(action, { isSuccess: true });
     return (
-        <form id={formId} onSubmit={handleSubmit}>
-            <Flex direction="column" gap="3">
-                <label>
-                    <Text as="div" mb="1" size="2" weight="bold">
-                        Название организации
-                    </Text>
-                    <TextField.Root defaultValue={organization?.name} placeholder="Введите название компании" />
-                </label>
-                <label>
-                    <Text as="div" mb="1" size="2" weight="bold">
-                        Тип организации
-                    </Text>
-                    <Select.Root defaultValue={organization?.type.id ?? organizationTypes.at(0)?.id}>
-                        <Select.Trigger />
-                        <Select.Content>
-                            {organizationTypes.map((type) => (
-                                <Select.Item value={type.id}>{type.name}</Select.Item>
-                            ))}
-                        </Select.Content>
-                    </Select.Root>
-                </label>
-                <label>
-                    <Flex align="center" gap="2">
-                        <Text mb="1" size="2" weight="bold">
-                            Архивная?
-                        </Text>
-                        <Checkbox defaultChecked={organization?.isArchived} />
-                    </Flex>
-                </label>
-            </Flex>
-        </form>
+        <Flex asChild direction="column" gap="2">
+            <form action={dispatch}>
+                <FormField error={state.name} label="Название">
+                    <TextField.Root
+                        defaultValue={organization?.name}
+                        name="name"
+                        placeholder="Муниципальное учреждение"
+                    />
+                </FormField>
+                <FormField error={state.typeId} label="Тип организации">
+                    <OrganizationTypesSelector defaultValue={organization?.type.id} name="typeId" />
+                </FormField>
+                <FormField direction="row" error={state.isArchived} label="Архивная?">
+                    <Checkbox defaultChecked={organization?.isArchived} name="isArchived" />
+                </FormField>
+                {end}
+            </form>
+        </Flex>
     );
 }

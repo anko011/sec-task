@@ -1,34 +1,108 @@
-import { Text } from '@radix-ui/themes';
-import { Navigate, Route, Routes } from 'react-router';
+import { createBrowserRouter, Navigate, Outlet } from 'react-router';
 
+import { UserProvider } from '~/entities/users';
+import { AbilityProvider } from '~/features/ability';
+import { AuthProvider, ProtectedRoute } from '~/features/auth';
+import { ThemeProvider } from '~/features/themes/change';
 import { OrganizationTypesPage } from '~/pages/organization-types';
 import { OrganizationsPage } from '~/pages/organizations';
+import { SignInPage } from '~/pages/sign-in';
 import { TaskCategoriesPage } from '~/pages/task-categories';
+import { TaskNamesPage } from '~/pages/task-names';
 import { TaskPackagePage } from '~/pages/task-package';
 import { CreateTaskPackagePage } from '~/pages/task-package-create';
 import { EditTaskPackagePage } from '~/pages/task-package-edit';
 import { TaskPackagesPage } from '~/pages/task-packages';
+import { UsersPage } from '~/pages/users';
 
 import { MainLayout } from './layouts/main-layout';
 
-export function ApplicationRouter() {
-    return (
-        <Routes>
-            <Route element={<MainLayout />}>
-                <Route element={<Navigate to="/task-packages" />} index />
-                <Route element={<OrganizationsPage />} path="organizations" />
-                <Route element={<OrganizationTypesPage />} path="organization-types" />
-                <Route path="task-packages">
-                    <Route element={<TaskPackagesPage />} index />
-                    <Route path=":id">
-                        <Route element={<TaskPackagePage />} index />
-                        <Route element={<EditTaskPackagePage />} path="edit" />
-                    </Route>
-                    <Route element={<CreateTaskPackagePage />} path="create" />
-                </Route>
-                <Route element={<TaskCategoriesPage />} path="task-categories" />
-                <Route element={<Text>Not implemented</Text>} path="staff" />
-            </Route>
-        </Routes>
-    );
-}
+export const router = createBrowserRouter([
+    {
+        children: [
+            {
+                children: [
+                    {
+                        element: <Navigate replace to="/task-packages" />,
+                        index: true
+                    },
+                    {
+                        element: <UsersPage />,
+                        path: 'users'
+                    },
+                    {
+                        element: <OrganizationsPage />,
+                        path: 'organizations'
+                    },
+                    {
+                        element: <OrganizationTypesPage />,
+                        path: 'organization-types'
+                    },
+                    {
+                        element: <TaskNamesPage />,
+                        path: 'task-names'
+                    },
+                    {
+                        children: [
+                            {
+                                element: <TaskPackagesPage />,
+                                index: true
+                            },
+                            {
+                                children: [
+                                    {
+                                        element: <TaskPackagePage />,
+                                        index: true
+                                    },
+                                    {
+                                        element: <EditTaskPackagePage />,
+                                        path: 'edit'
+                                    }
+                                ],
+                                path: ':id'
+                            },
+                            {
+                                element: <CreateTaskPackagePage />,
+                                path: 'create'
+                            }
+                        ],
+                        path: 'task-packages'
+                    },
+                    {
+                        element: <TaskCategoriesPage />,
+                        path: 'task-categories'
+                    },
+                    {
+                        element: <Navigate replace to="/task-packages" />,
+                        path: '*'
+                    }
+                ],
+                element: (
+                    <ProtectedRoute>
+                        <MainLayout />
+                    </ProtectedRoute>
+                ),
+                path: '/'
+            },
+            {
+                element: <SignInPage />,
+                path: 'sign-in'
+            },
+            {
+                element: <Navigate replace to="/task-packages" />,
+                path: '*'
+            }
+        ],
+        element: (
+            <UserProvider>
+                <AuthProvider>
+                    <AbilityProvider>
+                        <ThemeProvider>
+                            <Outlet />
+                        </ThemeProvider>
+                    </AbilityProvider>
+                </AuthProvider>
+            </UserProvider>
+        )
+    }
+]);

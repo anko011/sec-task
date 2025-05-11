@@ -1,8 +1,7 @@
 import { Badge, Table, Text } from '@radix-ui/themes';
 import type { ReactNode } from 'react';
-import { use } from 'react';
 
-import type { Organization } from '../model/organization';
+import type { Organization } from '../model';
 
 export type OrganizationTableProps = Table.RootProps & {
     actionEnd?: {
@@ -10,14 +9,13 @@ export type OrganizationTableProps = Table.RootProps & {
         action: (organization: Organization) => ReactNode;
     };
     actionStart?: {
-        title: string;
+        title: ReactNode;
         action: (organization: Organization) => ReactNode;
     };
-    data: Organization[] | Promise<Organization[]>;
+    data: Organization[];
 };
 
-export function OrganizationTable({ actionEnd, actionStart, data, ...props }: OrganizationTableProps) {
-    const organizations = use(Promise.resolve(data));
+export function OrganizationsTable({ actionEnd, actionStart, data, ...props }: OrganizationTableProps) {
     return (
         <Table.Root {...props}>
             <Table.Header>
@@ -34,7 +32,7 @@ export function OrganizationTable({ actionEnd, actionStart, data, ...props }: Or
                 </Table.Row>
             </Table.Header>
             <Table.Body>
-                {organizations.map((organization) => (
+                {data.map((organization) => (
                     <Table.Row key={organization.id}>
                         {actionStart != null && <Table.Cell>{actionStart.action(organization)}</Table.Cell>}
                         <Table.Cell>{organization.name}</Table.Cell>
@@ -47,7 +45,7 @@ export function OrganizationTable({ actionEnd, actionStart, data, ...props }: Or
                         {actionEnd != null && <Table.Cell>{actionEnd.action(organization)}</Table.Cell>}
                     </Table.Row>
                 ))}
-                {organizations.length === 0 && (
+                {data.length === 0 && (
                     <Table.Row>
                         <Table.Cell colSpan={5}>
                             <Text>Отсутствуют элементы</Text>

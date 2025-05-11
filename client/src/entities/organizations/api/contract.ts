@@ -1,6 +1,6 @@
-import { array, boolean, date, enums, object, optional, string } from 'superstruct';
+import { boolean, object, string } from 'superstruct';
 
-import { TaskStatus } from '~/entities/tasks';
+import { paginated } from '~/shared/api';
 
 export const GetOrganizationContract = object({
     id: string(),
@@ -11,17 +11,5 @@ export const GetOrganizationContract = object({
     name: string(),
     isArchived: boolean()
 });
-export const GetAllOrganizationsContract = array(GetOrganizationContract);
 
-export const GetStatusChangeContract = object({
-    id: string(),
-    changedAt: date(),
-    comment: string(),
-    newStatus: enums(Object.values(TaskStatus)),
-    oldStatus: optional(enums(Object.values(TaskStatus))),
-    organization: GetOrganizationContract,
-    packageId: string(),
-    taskId: string()
-});
-
-export const GetAllStatusChangeContract = array(GetStatusChangeContract);
+export const GetPaginatedOrganizationsContract = paginated(GetOrganizationContract);
