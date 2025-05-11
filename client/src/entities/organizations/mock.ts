@@ -2,7 +2,6 @@
 import { TaskStatus } from '~/entities/tasks/model/task';
 
 import { organizationTypes } from '../organization-types/mock';
-import type { StatusChange } from './model/change-status';
 
 export const organizations = {
     'a1b2c3d4-5678-90ab-cdef-1234567890ab': {
@@ -67,7 +66,7 @@ export const organizations = {
     }
 };
 
-export const statusChanges: StatusChange[] = [
+export const statusChanges = [
     {
         id: '1',
         changedAt: new Date(2025, 5, 20),

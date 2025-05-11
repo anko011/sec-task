@@ -1,4 +1,6 @@
-import { array, object, string } from 'superstruct';
+import { object, string } from 'superstruct';
+
+import { paginated } from '~/shared/api';
 
 export const GetTaskCategoryContract = object({
     id: string(),
@@ -6,4 +8,4 @@ export const GetTaskCategoryContract = object({
     color: string()
 });
 
-export const GetAllTaskCategoriesContract = array(GetTaskCategoryContract);
+export const GetPaginatedTaskCategoriesContract = paginated(GetTaskCategoryContract);

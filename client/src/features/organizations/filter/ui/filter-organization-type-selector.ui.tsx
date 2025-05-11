@@ -2,7 +2,7 @@ import { Flex, Select, Text, TextField } from '@radix-ui/themes';
 import { Suspense, use, useState } from 'react';
 
 import type { OrganizationType } from '~/entities/organization-types';
-import { OrganizationTypesRepository } from '~/entities/organization-types';
+import { findAllOrganizationTypes } from '~/entities/organization-types';
 import { Loader } from '~/shared/ui/loader';
 
 export type FilterOrganizationTypeSelectorProps = {
@@ -30,7 +30,7 @@ export function FilterOrganizationTypeSelector({ onChange }: FilterOrganizationT
         onChange?.(value === '-1' ? undefined : value);
     };
 
-    const types = OrganizationTypesRepository.findAll({ name });
+    const types = findAllOrganizationTypes().then(({ items }) => items);
 
     return (
         <Flex align="center" asChild gap="2">

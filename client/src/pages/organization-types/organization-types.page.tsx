@@ -1,35 +1,40 @@
 import { Flex } from '@radix-ui/themes';
-import { Suspense } from 'react';
+import React, { Suspense } from 'react';
+import { useSearchParams } from 'react-router';
 
-import { OrganizationTypesRepository } from '~/entities/organization-types';
-import { OrganizationTypesTable } from '~/entities/organization-types/';
+import { PaginatedOrganizationTypesTable } from '~/entities/organization-types';
 import { CreateOrganizationTypeButton } from '~/features/organization-types/create';
 import { DeleteOrganizationTypeButton } from '~/features/organization-types/delete';
 import { EditOrganizationTypeButton } from '~/features/organization-types/edit';
+import { SearchOrganizationTypesByName } from '~/features/organization-types/filter';
 import { Loader } from '~/shared/ui/loader';
-import { Pagination } from '~/shared/ui/pagination';
-import { SearchField } from '~/shared/ui/search-field';
-
-const organizationTypes = OrganizationTypesRepository.findAll();
 
 export function OrganizationTypesPage() {
+    const [searchParams] = useSearchParams([
+        ['limit', '10'],
+        ['offset', '0']
+    ]);
+    const key = [...searchParams.values()].join();
+
     return (
         <Flex direction="column" gap="4" minHeight="100%">
-            <Suspense fallback={<Loader />}>
-                <Flex align="center" gap="2">
-                    <CreateOrganizationTypeButton />
-                    <SearchField placeholder="Название типа..." />
-                </Flex>
-                <OrganizationTypesTable
-                    actions={(organizationType) => (
-                        <>
-                            <EditOrganizationTypeButton organizationType={organizationType} />
-                            <DeleteOrganizationTypeButton organizationType={organizationType} />
-                        </>
-                    )}
-                    data={organizationTypes}
+            <Flex gap="2">
+                <CreateOrganizationTypeButton />
+                <SearchOrganizationTypesByName />
+            </Flex>
+
+            <Suspense fallback={<Loader />} key={key}>
+                <PaginatedOrganizationTypesTable
+                    actionEnd={{
+                        title: '',
+                        action: (type) => (
+                            <Flex gap="2">
+                                <EditOrganizationTypeButton organizationType={type} />
+                                <DeleteOrganizationTypeButton organizationType={type} />
+                            </Flex>
+                        )
+                    }}
                 />
-                <Pagination currentPage={5} totalPages={10} />
             </Suspense>
         </Flex>
     );

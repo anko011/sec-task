@@ -10,7 +10,7 @@ export type DeleteTaskButtonProps = {
 export function DeleteTaskButton({ task }: DeleteTaskButtonProps) {
     return (
         <AlertDialogButton color="red" dialogTitle="Удаление задания" icon={<TrashIcon />} tooltip="Удалить задание">
-            Вы действительно хотите удалить задание "{task.name}?"
+            Вы действительно хотите удалить задание "{task.number}?"
         </AlertDialogButton>
     );
 }

@@ -4,7 +4,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import { UsersModule } from '../users/users.module';
 
-import { handlers as authHandlers } from './application/commands';
+import { handlers as authCommandHandlers } from './application/commands';
+import { handlers as authQueryHandlers } from './application/queries/users';
+
 import { AuthController } from './presentation/controllers/';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthGuard } from './presentation/guards';
@@ -14,13 +16,14 @@ import {
   JwtServiceAdapter,
 } from './infrastructure/adapters';
 import { CacheModule } from '@nestjs/cache-manager';
-
-//TODO: It needs to add a comparison between access and refresh token (by refresh token ID)
+import { OrganizationsModule } from '../organizations/organizations.module';
+import { MutexStoreService } from './infrastructure/adapters/mutext-store.adapter';
 
 @Module({
   imports: [
     CacheModule.register(),
     ConfigModule,
+    OrganizationsModule,
     UsersModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -28,24 +31,17 @@ import { CacheModule } from '@nestjs/cache-manager';
       useFactory: (configService: ConfigService) => ({
         global: true,
         secret: configService.get<string>('AUTH_SECRET'),
-        signOptions: { expiresIn: '60s' },
+        signOptions: { expiresIn: '1d' },
       }),
     }),
   ],
   providers: [
-    {
-      provide: APP_GUARD,
-      useClass: AuthGuard,
-    },
-    {
-      provide: TokensStorePort,
-      useClass: InMemoryTokensStoreAdapter,
-    },
-    {
-      provide: JwtServicePort,
-      useClass: JwtServiceAdapter,
-    },
-    ...authHandlers,
+    MutexStoreService,
+    { provide: APP_GUARD, useClass: AuthGuard },
+    { provide: TokensStorePort, useClass: InMemoryTokensStoreAdapter },
+    { provide: JwtServicePort, useClass: JwtServiceAdapter },
+    ...authCommandHandlers,
+    ...authQueryHandlers,
   ],
   controllers: [AuthController],
 })

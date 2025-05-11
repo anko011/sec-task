@@ -1,34 +1,50 @@
 import { Flex, Table } from '@radix-ui/themes';
 import type { ReactNode } from 'react';
-import { use } from 'react';
 
 import type { OrganizationType } from '../model';
 
 export type OrganizationTypesTableProps = Table.RootProps & {
-    actions?: (organizationType: OrganizationType) => ReactNode;
-    data: Promise<OrganizationType[]> | OrganizationType[];
+    actionEnd?: {
+        title: string;
+        action: (organizationType: OrganizationType) => ReactNode;
+    };
+    actionStart?: {
+        title: string;
+        action: (organizationType: OrganizationType) => ReactNode;
+    };
+    data: OrganizationType[];
 };
 
-export function OrganizationTypesTable({ actions, data, ...props }: OrganizationTypesTableProps) {
-    const organizationTypes = use(Array.isArray(data) ? Promise.resolve(data) : data);
+export function OrganizationTypesTable({ actionEnd, actionStart, data, ...props }: OrganizationTypesTableProps) {
     return (
         <Table.Root {...props}>
             <Table.Header>
                 <Table.Row>
+                    {actionStart != null && (
+                        <Table.ColumnHeaderCell width="72px">{actionStart.title}</Table.ColumnHeaderCell>
+                    )}
                     <Table.ColumnHeaderCell>Название</Table.ColumnHeaderCell>
-                    {actions != null && <Table.ColumnHeaderCell width="72px" />}
+                    {actionEnd != null && (
+                        <Table.ColumnHeaderCell width="72px">{actionEnd.title}</Table.ColumnHeaderCell>
+                    )}
                 </Table.Row>
             </Table.Header>
 
             <Table.Body>
-                {organizationTypes.map((organizationType) => (
+                {data.map((organizationType) => (
                     <Table.Row key={organizationType.id}>
-                        <Table.RowHeaderCell>{organizationType.name}</Table.RowHeaderCell>
-                        {actions != null && (
+                        {actionStart != null && (
                             <Table.Cell>
-                                <Flex gap="2">{actions(organizationType)}</Flex>
+                                <Flex gap="2">{actionStart.action(organizationType)}</Flex>
                             </Table.Cell>
                         )}
+                        <Table.Cell>{organizationType.name}</Table.Cell>
+                        {actionEnd != null && (
+                            <Table.Cell>
+                                <Flex gap="2">{actionEnd.action(organizationType)}</Flex>
+                            </Table.Cell>
+                        )}
+                        {data.length === 0 && <Table.Cell colSpan={3}>Отсутствуют записи</Table.Cell>}
                     </Table.Row>
                 ))}
             </Table.Body>

@@ -1,1 +1,1 @@
-export { EditOrganizationTypeButton, type EditOrganizationTypeButtonProps } from './ui/edit-organization-button.ui';
+export { EditOrganizationTypeButton } from './ui/edit-organization-type-button.ui';

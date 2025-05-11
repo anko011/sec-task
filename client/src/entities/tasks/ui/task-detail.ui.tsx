@@ -1,24 +1,27 @@
 import type { BadgeProps } from '@radix-ui/themes';
-import { Badge, Box, Button, DataList, Flex, Heading, Separator, Text } from '@radix-ui/themes';
+import { Badge, Button, DataList, Flex, Heading, Separator, Text } from '@radix-ui/themes';
 import { Accordion } from 'radix-ui';
-import { Suspense, use } from 'react';
+import { Fragment, Suspense } from 'react';
+import useSWR from 'swr';
 
-import { ChangeStatusesRepository } from '~/entities/organizations';
-import type { StatusChange } from '~/entities/organizations/model/change-status';
+import { findAllOrganizations } from '~/entities/organizations';
 import type { Task } from '~/entities/tasks';
-import { TaskInfoList, TasksRepository, TaskStatus } from '~/entities/tasks';
+import { TaskInfoList, TaskStatus } from '~/entities/tasks';
+import { Role, useCurrentUser } from '~/entities/users';
+import { ChangeTaskStatusButton } from '~/pages/task-package/task-package.page';
+import { axiosInstance } from '~/shared/api';
 import { Loader } from '~/shared/ui/loader';
 
-function groupBy<T>(array: T[], getKey: (item: T) => string | number): Record<string, T[]> {
-    return array.reduce<Record<string, T[]>>((result, item) => {
-        const key = String(getKey(item));
-        if (result[key] == null) {
-            result[key] = [];
-        }
-        result[key].push(item);
-        return result;
-    }, {});
-}
+// function groupBy<T>(array: T[], getKey: (item: T) => string | number): Record<string, T[]> {
+//     return array.reduce<Record<string, T[]>>((result, item) => {
+//         const key = String(getKey(item));
+//         if (result[key] == null) {
+//             result[key] = [];
+//         }
+//         result[key].push(item);
+//         return result;
+//     }, {});
+// }
 
 function TaskStatusBadge({ status }: { status: TaskStatus }) {
     const map: Record<TaskStatus, { color: BadgeProps['color']; text: string }> = {
@@ -33,62 +36,139 @@ function TaskStatusBadge({ status }: { status: TaskStatus }) {
     return <Badge color={color}>{text}</Badge>;
 }
 
-export function TaskStatusHistoryAccordion({ data }: { data: Promise<StatusChange[]> }) {
-    const changes = use(data);
-    const changesByAssignee = groupBy(changes, (change) => change.organization.id);
+export function TasksStatusHistoryByOrganization({
+    organizationId,
+    packageId,
+    taskId
+}: {
+    organizationId: string;
+    packageId: string;
+    taskId: string;
+}) {
+    const { data: executions } = useSWR(
+        ['executions', packageId, taskId],
+        async () => {
+            const response = await axiosInstance.get<
+                {
+                    organizationId: string;
+                    status: TaskStatus;
+                    statusHistory: {
+                        changedAt: string;
+                        comment: string;
+                        newStatus: TaskStatus;
+                        oldStatus?: TaskStatus;
+                    }[];
+                    taskId: string;
+                }[]
+            >(`task-packages/${packageId}/tasks/${taskId}/executions`);
+            return response.data;
+        },
+        { suspense: true }
+    );
 
-    if (!changes.length) return <Text color="gray">Нет изменений статусов</Text>;
+    const filtered = executions.filter((exec) => exec.organizationId === organizationId);
+    return <TaskStatusHistory histories={filtered.at(0)?.statusHistory ?? []} />;
+}
+
+function TaskStatusHistory({
+    histories
+}: {
+    histories: {
+        changedAt: string;
+        comment: string;
+        newStatus: TaskStatus;
+        oldStatus?: TaskStatus;
+    }[];
+}) {
+    return (
+        <Flex direction="column" gap="2" mt="2">
+            {histories.map((history, i) => (
+                <Fragment key={history.changedAt}>
+                    {i !== 0 && <Separator my="2" size="4" />}
+                    <Flex key={history.changedAt}>
+                        <Flex align="start" gap="2" minWidth="450px">
+                            <Text size="2">{new Date(history.changedAt).toLocaleDateString('ru-RU')}</Text>
+                            {history.oldStatus !== undefined && (
+                                <>
+                                    <TaskStatusBadge status={history.oldStatus} /> →
+                                </>
+                            )}
+                            <TaskStatusBadge status={history.newStatus} />
+                        </Flex>
+                        <Text size="2">{history.comment}</Text>
+                    </Flex>
+                </Fragment>
+            ))}
+            {histories.length === 0 && <Text size="2">Отсутствует история</Text>}
+        </Flex>
+    );
+}
+
+export function TaskStatusHistoryAccordion({ packageId, taskId }: { packageId: string; taskId: string }) {
+    const { data: executions } = useSWR(
+        ['executions', packageId, taskId],
+        async () => {
+            const response = await axiosInstance.get<
+                {
+                    organizationId: string;
+                    status: TaskStatus;
+                    statusHistory: {
+                        changedAt: string;
+                        comment: string;
+                        newStatus: TaskStatus;
+                        oldStatus?: TaskStatus;
+                    }[];
+                    taskId: string;
+                }[]
+            >(`task-packages/${packageId}/tasks/${taskId}/executions`);
+            return response.data;
+        },
+        { suspense: true }
+    );
+
+    const {
+        data: { items: organizations }
+    } = useSWR('organizations-', () => findAllOrganizations({ limit: 100000 }), { suspense: true });
+
+    if (!executions.length) return <Text color="gray">Нет изменений статусов</Text>;
 
     return (
         <Accordion.Root asChild style={{ marginBottom: '1rem' }} type="multiple">
             <Flex direction="column" gap="4">
-                {Object.entries(changesByAssignee).map(([organizationId, changes]) => (
-                    <Accordion.Item key={organizationId} value={organizationId}>
+                {executions.map((execute) => (
+                    <Accordion.Item key={execute.organizationId} value={execute.organizationId}>
                         <Accordion.Header asChild>
                             <Flex justify="between">
-                                <DataList.Root size="2">
+                                <DataList.Root size="1">
                                     <DataList.Item>
                                         <DataList.Label>Организация</DataList.Label>
-                                        <DataList.Value>{changes.at(0)?.organization.name}</DataList.Value>
+                                        <DataList.Value>
+                                            {organizations.find((org) => org.id === execute.organizationId)?.name}
+                                        </DataList.Value>
                                     </DataList.Item>
                                     <DataList.Item>
                                         <DataList.Label>Последний статус</DataList.Label>
                                         <DataList.Value>
-                                            <TaskStatusBadge status={TaskStatus.COMPLETED} />
+                                            <TaskStatusBadge status={execute.status} />
                                         </DataList.Value>
                                     </DataList.Item>
                                 </DataList.Root>
-                                <Accordion.Trigger asChild>
-                                    <Button variant="surface">Открыть историю</Button>
-                                </Accordion.Trigger>
+                                <Flex gap="2">
+                                    <ChangeTaskStatusButton
+                                        organizationId={execute.organizationId}
+                                        packageId={packageId}
+                                        status={execute.status}
+                                        taskId={taskId}
+                                    />
+                                    <Accordion.Trigger asChild>
+                                        <Button variant="surface">Открыть историю</Button>
+                                    </Accordion.Trigger>
+                                </Flex>
                             </Flex>
                         </Accordion.Header>
-                        <Accordion.Content asChild>
-                            <Flex direction="column" gap="1" mt="2">
-                                {changes.map((change) => (
-                                    <DataList.Root key={change.id} size="1">
-                                        <Separator size="4" />
-                                        <DataList.Item>
-                                            <Flex justify="between">
-                                                <DataList.Label>
-                                                    <Flex align="center" gap="2">
-                                                        {change.changedAt.toLocaleDateString('ru-RU')}
-                                                        {change.oldStatus !== undefined && (
-                                                            <>
-                                                                <TaskStatusBadge status={change.oldStatus} /> →
-                                                            </>
-                                                        )}
-                                                        <TaskStatusBadge status={change.newStatus} />
-                                                    </Flex>
-                                                </DataList.Label>
-                                                <Box maxWidth="70%">
-                                                    <DataList.Value>{change.comment}</DataList.Value>
-                                                </Box>
-                                            </Flex>
-                                        </DataList.Item>
-                                    </DataList.Root>
-                                ))}
-                            </Flex>
+
+                        <Accordion.Content>
+                            <TaskStatusHistory histories={execute.statusHistory} />
                         </Accordion.Content>
                     </Accordion.Item>
                 ))}
@@ -97,22 +177,9 @@ export function TaskStatusHistoryAccordion({ data }: { data: Promise<StatusChang
     );
 }
 
-export function TaskStatusHistory({ data }: { data: Promise<Task> }) {
-    const task = use(data);
-    const changes = ChangeStatusesRepository.findAll(
-        { packageId: task.packageId, taskId: task.id },
-        { limit: 100 }
-    ).then(({ items }) => items);
-
-    return (
-        <Suspense fallback={<Loader />}>
-            <TaskStatusHistoryAccordion data={changes} />
-        </Suspense>
-    );
-}
-
-export function TaskDetail({ packageId, taskId }: { packageId: string; taskId: string }) {
-    const task = TasksRepository.getTask(packageId, taskId);
+export function TaskDetail({ packageId, task }: { packageId: string; task: Task }) {
+    const { user } = useCurrentUser();
+    if (user == null) throw new Error('Component should be mounted when user auth');
 
     return (
         <Flex direction="column" gap="4" minHeight="100%">
@@ -120,58 +187,36 @@ export function TaskDetail({ packageId, taskId }: { packageId: string; taskId: s
                 <Heading size="4">Информация о задаче</Heading>
                 <Separator size="4" />
 
-                <TaskInfoList data={task} />
+                <TaskInfoList packageId={packageId} task={task} />
 
                 <Heading size="4">Описание</Heading>
                 <Separator size="4" />
                 <Text size="2" wrap="pretty">
-                    Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae
-                    pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed
-                    diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl
-                    malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad
-                    litora torquent per conubia nostra inceptos himenaeos. Lorem ipsum dolor sit amet consectetur
-                    adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium
-                    tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus
-                    nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit
-                    semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.
-                    Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae
-                    pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed
-                    diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl
-                    malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad
-                    litora torquent per conubia nostra inceptos himenaeos. Lorem ipsum dolor sit amet consectetur
-                    adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium
-                    tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus
-                    nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit
-                    semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.
+                    {task.description}
                 </Text>
 
-                <Heading size="4">Дополнительные сведения</Heading>
-                <Separator size="4" />
-                <Text size="2" wrap="pretty">
-                    Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae
-                    pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed
-                    diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl
-                    malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad
-                    litora torquent per conubia nostra inceptos himenaeos. Lorem ipsum dolor sit amet consectetur
-                    adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium
-                    tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus
-                    nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit
-                    semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.
-                    Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae
-                    pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed
-                    diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl
-                    malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad
-                    litora torquent per conubia nostra inceptos himenaeos. Lorem ipsum dolor sit amet consectetur
-                    adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium
-                    tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus
-                    nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit
-                    semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.
-                </Text>
+                {task.additionalInformation != null && task.additionalInformation !== '' && (
+                    <>
+                        <Heading size="4">Дополнительные сведения</Heading>
+                        <Separator size="4" />
+                        <Text size="2" wrap="pretty">
+                            {task.additionalInformation}
+                        </Text>
+                    </>
+                )}
 
                 <Heading size="4">История выполнения</Heading>
                 <Separator size="4" />
                 <Suspense fallback={<Loader />}>
-                    <TaskStatusHistory data={task} />
+                    {user.role === Role.Assigner ? (
+                        <TasksStatusHistoryByOrganization
+                            organizationId={user.organizationId}
+                            packageId={packageId}
+                            taskId={task.id}
+                        />
+                    ) : (
+                        <TaskStatusHistoryAccordion packageId={packageId} taskId={task.id} />
+                    )}
                 </Suspense>
             </Suspense>
         </Flex>

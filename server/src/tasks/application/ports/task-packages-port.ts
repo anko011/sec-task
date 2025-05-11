@@ -1,28 +1,14 @@
 import { TaskPackage, TaskPackageStatus } from '../entities/task-package';
+import { BaseEntityPort } from '../../../common/ports';
 
-export abstract class TaskPackagesPort {
-  abstract findAndCount(
-    where?: {
-      name?: string;
-      baseDocument?: string;
-      status?: TaskPackageStatus;
-    },
-    options?: {
-      limit?: number;
-      offset?: number;
-    },
-  ): Promise<[TaskPackage[], number]>;
+export type TaskPackageFilterCriteria = {
+  readonly id?: string;
+  readonly incomingRequisite?: string;
+  readonly outgoingRequisite?: string;
+  readonly status?: TaskPackageStatus;
+};
 
-  abstract find(id: string): Promise<TaskPackage | null>;
-
-  abstract save(taskPackage: TaskPackage): Promise<TaskPackage>;
-
-  abstract delete(id: string | TaskPackage): Promise<void>;
-
-  abstract update(dto: {
-    id: string;
-    name?: string;
-    baseDocument?: string;
-    status?: TaskPackageStatus;
-  }): Promise<TaskPackage>;
-}
+export abstract class TaskPackagesPort extends BaseEntityPort<
+  TaskPackage,
+  TaskPackageFilterCriteria
+> {}

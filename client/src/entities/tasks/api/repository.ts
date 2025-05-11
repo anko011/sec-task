@@ -1,35 +1,59 @@
+import type { BadgeProps } from '@radix-ui/themes';
 import { assert } from 'superstruct';
 
-import type { TaskPackage } from '~/entities/task-packages/@x/tasks';
+import type { Paginated } from '~/shared/api';
+import { axiosInstance } from '~/shared/api';
 
-import { tasks } from '../mock';
 import type { Task } from '../model/task';
-import { GetTaskContract, GetTasksContract } from './contracts';
+import { GetPaginatedTasksContract } from './contracts';
 
-export namespace TasksRepository {
-    export async function getPackageTasks(packageId: string | TaskPackage): Promise<Task[]> {
-        const id = typeof packageId === 'string' ? packageId : packageId.id;
-        const res = new Promise((resolve) =>
-            setTimeout(() => {
-                resolve(Array.from(Object.values(tasks)).filter((t) => t.packageId === id));
-            }, 1000)
-        );
-        const data = await res;
-        assert(data, GetTasksContract);
-        return data as Task[];
-    }
+export async function findAllTasks(packageId: string, params?: {}, signal?: AbortSignal): Promise<Paginated<Task>> {
+    const response = await axiosInstance.get<unknown>(`task-packages/${packageId}/tasks`, { params, signal });
+    assert(response.data, GetPaginatedTasksContract);
+    return {
+        ...response.data,
+        items: response.data.items.map((item) => ({
+            ...item,
+            category: { ...item.category, color: item.category.color as BadgeProps['color'] },
+            createdAt: new Date(item.createdAt),
+            deadline: new Date(item.deadline)
+        }))
+    };
+}
 
-    export async function getTask(_: string | TaskPackage, taskId: string | TaskPackage): Promise<Task> {
-        const tskId = typeof taskId === 'string' ? taskId : taskId.id;
+export async function createTask(
+    packageId: string,
+    data: Record<string, unknown>,
+    signal?: AbortSignal
+): Promise<Task> {
+    const response = await axiosInstance.post<Task>(`task-packages/${packageId}/tasks`, data, { signal });
+    return response.data;
+}
 
-        const res = new Promise((resolve) =>
-            setTimeout(() => {
-                resolve(tasks[tskId]);
-            }, 1000)
-        );
+export async function updateTask(
+    packageId: string,
+    taskId: string,
+    data: Record<string, unknown>,
+    signal?: AbortSignal
+): Promise<Task> {
+    const response = await axiosInstance.patch(`task-packages/${packageId}/tasks/${taskId}`, data, { signal });
+    return response.data as Task;
+}
 
-        const data = await res;
-        assert(data, GetTaskContract);
-        return data as Task;
-    }
+export async function deleteTask(packageId: string, taskId: string, signal?: AbortSignal) {
+    const response = await axiosInstance.delete(`task-packages/${packageId}/tasks/${taskId}`, { signal });
+    return response.data;
+}
+
+export async function updateTaskStatus(
+    packageId: string,
+    taskId: string,
+    data?: Record<string, unknown>,
+    signal?: AbortSignal
+) {
+    const response = await axiosInstance.post(`task-packages/${packageId}/tasks/${taskId}/change-status`, data, {
+        signal
+    });
+
+    return response.data;
 }

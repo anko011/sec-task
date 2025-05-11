@@ -1,20 +1,180 @@
-import { Badge, DataList, Flex } from '@radix-ui/themes';
-import { Suspense, use } from 'react';
+import { PaperPlaneIcon } from '@radix-ui/react-icons';
+import { Badge, DataList, Flex, Select, TextArea } from '@radix-ui/themes';
+import type { ReactNode } from 'react';
+import { Suspense, useActionState, useState } from 'react';
 import { useParams } from 'react-router';
+import useSWR from 'swr';
 
-import { SearchableOrganizationTable } from '~/entities/organizations';
-import type { TaskPackage } from '~/entities/task-packages';
-import { TaskPackagesRepository } from '~/entities/task-packages';
-import { TasksList, TasksRepository } from '~/entities/tasks';
-import { FilterTaskCategorySelector } from '~/features/task-categories/filter';
-import { FilterTaskDangerStatusSelector } from '~/features/tasks/filter';
+import { getOrganizationById, OrganizationsTable } from '~/entities/organizations';
+import { getTaskPackageById } from '~/entities/task-packages';
+import { TaskStatus } from '~/entities/tasks';
+import { updateTaskStatus } from '~/entities/tasks/api/repository';
+import { Role, useCurrentUser } from '~/entities/users';
+import { Can } from '~/features/ability';
+import { TaskDraftBrowser } from '~/features/tasks/create';
+import { useTasks } from '~/features/tasks/create/ui/task-draft-browser.ui';
+import type { PaginateOptions } from '~/shared/api';
+import { axiosInstance, getFieldErrors } from '~/shared/api';
+import { FormField } from '~/shared/ui/form-field';
 import { Loader } from '~/shared/ui/loader';
 import { Pagination } from '~/shared/ui/pagination';
-import { SearchField } from '~/shared/ui/search-field';
+import { UpsertEntityDialog } from '~/shared/ui/upsert-entity-dialog/index';
 
-function TaskPackageDetail({ data }: { data: Promise<TaskPackage> }) {
-    const taskPackage = use(data);
-    const tasks = TasksRepository.getPackageTasks(taskPackage.id);
+type ChangeTaskStatusFormState = {
+    comment?: string;
+    isSuccess: boolean;
+    status?: string;
+};
+
+const allowedTransitions: Record<TaskStatus, TaskStatus[]> = {
+    [TaskStatus.COMPENSATED]: [TaskStatus.IN_PROGRESS],
+    [TaskStatus.COMPLETED]: [TaskStatus.IN_PROGRESS],
+    [TaskStatus.IN_PROGRESS]: [TaskStatus.COMPLETED, TaskStatus.NO_ACTUAL, TaskStatus.COMPENSATED],
+    [TaskStatus.NEW]: [TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, TaskStatus.COMPENSATED, TaskStatus.NO_ACTUAL],
+    [TaskStatus.NO_ACTUAL]: [TaskStatus.IN_PROGRESS]
+};
+
+const texts: Record<TaskStatus, string> = {
+    [TaskStatus.COMPENSATED]: 'Приняты компенсирующие меры',
+    [TaskStatus.COMPLETED]: 'Выполнен',
+    [TaskStatus.IN_PROGRESS]: 'В процессе',
+    [TaskStatus.NEW]: 'Новый',
+    [TaskStatus.NO_ACTUAL]: 'Не актуален'
+};
+
+function ChangeTaskStatusForm({
+    end,
+    onSuccess,
+    organizationId,
+    packageId,
+    status,
+    taskId
+}: {
+    end?: ReactNode;
+    onSuccess?: () => void;
+    organizationId: string;
+    packageId: string;
+    status?: TaskStatus;
+    taskId: string;
+}) {
+    const { user } = useCurrentUser();
+    const { data: extensions, mutate: extensionMutate } = useSWR(
+        user?.role === Role.Assigner ? 'exchangeByOrg' : null,
+        async () => {
+            const response = await axiosInstance.get<
+                {
+                    organizationId: string;
+                    status: TaskStatus;
+                    statusHistory: {
+                        changedAt: string;
+                        comment: string;
+                        newStatus: TaskStatus;
+                        oldStatus?: TaskStatus;
+                    }[];
+                    taskId: string;
+                }[]
+            >(`task-packages/${packageId}/tasks/${taskId}/executions?organizationId=${organizationId}`);
+            return response.data;
+        },
+        { suspense: true }
+    );
+
+    const currStatus = status ?? (extensions.flat().at(0)?.status as TaskStatus);
+    const { mutate } = useTasks(packageId, {});
+
+    const action = async (_: ChangeTaskStatusFormState, formData: FormData): Promise<ChangeTaskStatusFormState> => {
+        try {
+            await updateTaskStatus(packageId, taskId, {
+                comment: formData.get('comment'),
+                organizationId,
+                status: formData.get('status')
+            });
+            await mutate();
+            await extensionMutate();
+            onSuccess?.();
+            return { isSuccess: true };
+        } catch (error) {
+            return { isSuccess: false, ...getFieldErrors(error) };
+        }
+    };
+
+    const [state, dispatch] = useActionState(action, { isSuccess: true });
+
+    const transitions = allowedTransitions[currStatus];
+
+    return (
+        <Flex asChild direction="column" gap="2">
+            <form action={dispatch}>
+                <FormField error={state.status} label="Статус">
+                    <Select.Root name="status">
+                        <Select.Trigger />
+                        <Select.Content>
+                            {transitions.map((item) => (
+                                <Select.Item key={item} value={item}>
+                                    {texts[item]}
+                                </Select.Item>
+                            ))}
+                        </Select.Content>
+                    </Select.Root>
+                </FormField>
+
+                <FormField error={state.comment} label="Комментарий">
+                    <TextArea name="comment" style={{ height: '500px' }} />
+                </FormField>
+
+                {end}
+            </form>
+        </Flex>
+    );
+}
+
+export function ChangeTaskStatusButton({
+    organizationId,
+    packageId,
+    status,
+    taskId
+}: {
+    organizationId: string;
+    packageId: string;
+    status?: TaskStatus;
+    taskId: string;
+}) {
+    const [isOpen, setIsOpen] = useState(false);
+    return (
+        <UpsertEntityDialog.Root onOpenChange={setIsOpen} open={isOpen} title="Смена статуса">
+            <UpsertEntityDialog.Trigger tooltip="Изменить статус">
+                <PaperPlaneIcon />
+            </UpsertEntityDialog.Trigger>
+            <UpsertEntityDialog.Content minHeight="50vh">
+                <ChangeTaskStatusForm
+                    end={<UpsertEntityDialog.Controller />}
+                    onSuccess={() => {
+                        setIsOpen(false);
+                    }}
+                    organizationId={organizationId}
+                    packageId={packageId}
+                    status={status}
+                    taskId={taskId}
+                />
+            </UpsertEntityDialog.Content>
+        </UpsertEntityDialog.Root>
+    );
+}
+
+function TaskPackageDetail({ packageId }: { packageId: string }) {
+    const [orgPagination, setOrgPagination] = useState<PaginateOptions>({ limit: 10, offset: 0 });
+    const { user } = useCurrentUser();
+
+    const { data: taskPackage } = useSWR(`task-package/${packageId}`, () => getTaskPackageById(packageId), {
+        suspense: true
+    });
+
+    const { data: organizations } = useSWR(
+        'organizations',
+        () => Promise.all(taskPackage.assignedOrganizationIds.map((id) => getOrganizationById(id))),
+        { suspense: true }
+    );
+
     return (
         <DataList.Root size="2">
             <DataList.Item align="center">
@@ -29,41 +189,64 @@ function TaskPackageDetail({ data }: { data: Promise<TaskPackage> }) {
 
             <DataList.Item align="center">
                 <DataList.Label>Прикрепленные файлы</DataList.Label>
-                <Flex asChild gap="2">
-                    <DataList.Value>
+                <DataList.Value>
+                    <Flex gap="2">
                         <Badge>Файл #1.docx</Badge>
                         <Badge>Файл #2.docx</Badge>
                         <Badge>Файл #3.docx</Badge>
                         <Badge>Файл #4.docx</Badge>
-                    </DataList.Value>
-                </Flex>
-            </DataList.Item>
-
-            <DataList.Item align="center">
-                <DataList.Label>Исполнители</DataList.Label>
-                <Flex asChild direction="column" gap="2">
-                    <DataList.Value>
-                        <SearchableOrganizationTable />
-                    </DataList.Value>
-                </Flex>
+                    </Flex>
+                </DataList.Value>
             </DataList.Item>
 
             <DataList.Item align="center">
                 <DataList.Label>Задачи</DataList.Label>
-                <Flex asChild direction="column" gap="2">
-                    <DataList.Value>
-                        <Flex gap="2">
-                            <SearchField placeholder="Название задачи..." />
-                            <FilterTaskCategorySelector />
-                            <FilterTaskDangerStatusSelector />
-                        </Flex>
-                        <Suspense fallback={<Loader />}>
-                            <TasksList data={Promise.resolve(tasks)} packageId={taskPackage.id} />
-                            <Pagination currentPage={1} totalPages={Promise.resolve(10)} />
-                        </Suspense>
-                    </DataList.Value>
-                </Flex>
+                <DataList.Value>
+                    <Flex direction="column" gap="2" width="100%">
+                        <TaskDraftBrowser.Root>
+                            <Flex gap="2">
+                                <TaskDraftBrowser.NumberFilter />
+                                <TaskDraftBrowser.NameFilter />
+                            </Flex>
+                            <Suspense fallback={<Loader />}>
+                                <TaskDraftBrowser.Tasks
+                                    actions={
+                                        user?.role === Role.Assigner
+                                            ? (task) => (
+                                                  <ChangeTaskStatusButton
+                                                      organizationId={user.organizationId}
+                                                      packageId={packageId}
+                                                      taskId={task.id}
+                                                  />
+                                              )
+                                            : undefined
+                                    }
+                                    packageId={packageId}
+                                />
+                            </Suspense>
+                        </TaskDraftBrowser.Root>
+                    </Flex>
+                </DataList.Value>
             </DataList.Item>
+
+            <Can an="Organization" I="read">
+                <DataList.Item align="center">
+                    <DataList.Label>Исполнители</DataList.Label>
+                    <DataList.Value>
+                        <Flex direction="column" gap="2" width="100%">
+                            <OrganizationsTable data={organizations} />
+                            <Pagination
+                                data={{
+                                    limit: orgPagination.limit ?? 10,
+                                    offset: orgPagination.offset ?? 0,
+                                    total: taskPackage.assignedOrganizationIds.length
+                                }}
+                                onChange={setOrgPagination}
+                            />
+                        </Flex>
+                    </DataList.Value>
+                </DataList.Item>
+            </Can>
         </DataList.Root>
     );
 }
@@ -71,12 +254,11 @@ function TaskPackageDetail({ data }: { data: Promise<TaskPackage> }) {
 export function TaskPackagePage() {
     const params = useParams();
     const packageId = params.id ?? '';
-    const taskPack = TaskPackagesRepository.getById(packageId);
 
     return (
-        <Flex direction="column" gap="4" minHeight="100%" p="4">
+        <Flex direction="column" minHeight="100%" p="4">
             <Suspense fallback={<Loader />}>
-                <TaskPackageDetail data={taskPack} />
+                <TaskPackageDetail packageId={packageId} />
             </Suspense>
         </Flex>
     );

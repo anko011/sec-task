@@ -1,19 +1,36 @@
 import { PlusIcon } from '@radix-ui/react-icons';
-import { useId } from 'react';
+import { Box, ScrollArea } from '@radix-ui/themes';
+import { useState } from 'react';
 
-import { TaskCategoryForm } from '~/entities/task-categories';
-import { DialogButton } from '~/shared/ui/dialog-button';
+import { UpsertEntityDialog } from '~/shared/ui/upsert-entity-dialog';
+
+import { CreateTaskCategoryForm } from './create-task-category-form.ui';
 
 export function CreateTaskCategoryButton() {
-    const formId = useId();
+    const [isOpen, setIsOpen] = useState(false);
+
     return (
-        <DialogButton
-            dialogTitle="Создание категории задачи"
-            formId={formId}
-            icon={<PlusIcon />}
-            tooltip="Создать категорию задачи"
-        >
-            <TaskCategoryForm formId={formId} />
-        </DialogButton>
+        <UpsertEntityDialog.Root onOpenChange={setIsOpen} open={isOpen} title="Создание категории">
+            <UpsertEntityDialog.Trigger
+                onClick={() => {
+                    setIsOpen(true);
+                }}
+                tooltip="Создать категорию"
+            >
+                <PlusIcon />
+            </UpsertEntityDialog.Trigger>
+            <UpsertEntityDialog.Content>
+                <Box asChild pr="3">
+                    <ScrollArea size="1">
+                        <CreateTaskCategoryForm
+                            end={<UpsertEntityDialog.Controller />}
+                            onSuccess={() => {
+                                setIsOpen(false);
+                            }}
+                        />
+                    </ScrollArea>
+                </Box>
+            </UpsertEntityDialog.Content>
+        </UpsertEntityDialog.Root>
     );
 }

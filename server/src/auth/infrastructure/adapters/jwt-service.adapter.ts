@@ -28,4 +28,8 @@ export class JwtServiceAdapter implements JwtServicePort {
   async createAccessToken(payload: Buffer | object): Promise<string> {
     return this.jwtService.signAsync(payload);
   }
+
+  async decode(refreshToken: string): Promise<{ sub: string; role: Role }> {
+    return this.jwtService.decode(refreshToken);
+  }
 }

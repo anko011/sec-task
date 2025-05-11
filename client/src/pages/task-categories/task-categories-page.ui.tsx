@@ -1,34 +1,37 @@
 import { Flex } from '@radix-ui/themes';
-import { Suspense } from 'react';
+import React, { Suspense } from 'react';
+import { useSearchParams } from 'react-router';
 
-import { TaskCategoriesRepository, TaskCategoriesTable } from '~/entities/task-categories';
+import { PaginatedTaskCategoryTable } from '~/entities/task-categories';
 import { CreateTaskCategoryButton } from '~/features/task-categories/create';
 import { DeleteTaskCategoryButton } from '~/features/task-categories/delete';
 import { EditTaskCategoryButton } from '~/features/task-categories/edit';
+import { SearchTaskCategoriesByName } from '~/features/task-categories/filter';
 import { Loader } from '~/shared/ui/loader';
-import { Pagination } from '~/shared/ui/pagination';
-import { SearchField } from '~/shared/ui/search-field';
 
 export function TaskCategoriesPage() {
-    const categories = TaskCategoriesRepository.findAll();
+    const [searchParams] = useSearchParams();
+    const key = [...searchParams.values()].join();
+
     return (
         <Flex direction="column" gap="4" minHeight="100%">
-            <Suspense fallback={<Loader />}>
-                <Flex align="center" gap="2">
-                    <CreateTaskCategoryButton />
-                    <SearchField placeholder="Название категории..." />
-                </Flex>
+            <Flex gap="2">
+                <CreateTaskCategoryButton />
+                <SearchTaskCategoriesByName />
+            </Flex>
 
-                <TaskCategoriesTable
-                    action={(category) => (
-                        <Flex gap="2">
-                            <EditTaskCategoryButton category={category} />
-                            <DeleteTaskCategoryButton category={category} />
-                        </Flex>
-                    )}
-                    data={categories}
+            <Suspense fallback={<Loader />} key={key}>
+                <PaginatedTaskCategoryTable
+                    actionEnd={{
+                        title: '',
+                        action: (taskCategory) => (
+                            <Flex gap="2">
+                                <EditTaskCategoryButton taskCategory={taskCategory} />
+                                <DeleteTaskCategoryButton taskCategory={taskCategory} />
+                            </Flex>
+                        )
+                    }}
                 />
-                <Pagination currentPage={5} totalPages={10} />
             </Suspense>
         </Flex>
     );

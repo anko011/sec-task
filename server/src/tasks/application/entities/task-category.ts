@@ -1,6 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 
+export type TaskCategoryFilterCriteria = {
+  id?: string;
+  name?: string;
+  color?: string;
+};
+
 export class TaskCategory {
   @ApiProperty()
   public readonly id: string;
@@ -34,5 +40,10 @@ export class TaskCategory {
     //TODO: Consider adding a validation here
     //TODO: Consider adding a Color class here
     this._color = color;
+  }
+
+  update(dto: { readonly name?: string; readonly color?: string }) {
+    this.name = dto.name ?? this.name;
+    this.color = dto.color ?? this.color;
   }
 }

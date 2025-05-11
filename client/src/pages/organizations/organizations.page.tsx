@@ -1,27 +1,34 @@
 import { Flex } from '@radix-ui/themes';
-import { Suspense } from 'react';
+import React, { Suspense } from 'react';
+import { useSearchParams } from 'react-router';
 
-import { OrganizationTable } from '~/entities/organizations';
-import { OrganizationsRepository } from '~/entities/organizations/api/repository';
-import { CreateOrganizationButton } from '~/features/organizations/create/';
+import { PaginatedOrganizationsTable } from '~/entities/organizations';
+import { CreateOrganizationButton } from '~/features/organizations/create';
 import { DeleteOrganizationButton } from '~/features/organizations/delete';
 import { EditOrganizationButton } from '~/features/organizations/edit';
+import {
+    SearchOrganizationsByArchiveStatus,
+    SearchOrganizationsByName,
+    SearchOrganizationsByType
+} from '~/features/organizations/filter';
 import { Loader } from '~/shared/ui/loader';
-import { Pagination } from '~/shared/ui/pagination';
-import { SearchField } from '~/shared/ui/search-field';
-
-const organizations = OrganizationsRepository.findAll();
 
 export function OrganizationsPage() {
+    const [searchParams] = useSearchParams();
+
+    const key = [...searchParams.values()].join();
+
     return (
         <Flex direction="column" gap="4" minHeight="100%">
-            <Suspense fallback={<Loader />}>
-                <Flex gap="2">
-                    <CreateOrganizationButton />
-                    <SearchField placeholder="Название организации..." />
-                </Flex>
+            <Flex gap="2">
+                <CreateOrganizationButton />
+                <SearchOrganizationsByName />
+                <SearchOrganizationsByType />
+                <SearchOrganizationsByArchiveStatus />
+            </Flex>
 
-                <OrganizationTable
+            <Suspense fallback={<Loader />} key={key}>
+                <PaginatedOrganizationsTable
                     actionEnd={{
                         title: '',
                         action: (organization) => (
@@ -31,9 +38,7 @@ export function OrganizationsPage() {
                             </Flex>
                         )
                     }}
-                    data={organizations.then(({ items }) => items)}
                 />
-                <Pagination currentPage={5} totalPages={10} />
             </Suspense>
         </Flex>
     );

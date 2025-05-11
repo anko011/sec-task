@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Post,
@@ -9,18 +10,24 @@ import {
 } from '@nestjs/common';
 import { SignInDTO, SignUpDTO } from '../contracts';
 import { ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { CommandBus } from '@nestjs/cqrs';
+import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { Response } from 'express';
-import { SignInCommand, SignUpCommand } from '../../application/commands';
+import {
+  LogoutCommand,
+  SignInCommand,
+  SignUpCommand,
+} from '../../application/commands';
 import { AuthTokenPair } from '../../application/entities';
 import { Public, RefreshToken } from '../decorators';
 import { RefreshTokenCommand } from '../../application/commands/refresh-token.command';
-
-//TODO: It needs to be refactored
+import { GetCurrentUserQuery } from '../../application/queries/users';
 
 @Controller('auth')
 export class AuthController {
-  public constructor(private readonly commandBus: CommandBus) {}
+  public constructor(
+    private readonly commandBus: CommandBus,
+    private readonly queryBus: QueryBus,
+  ) {}
 
   @ApiOperation({ summary: 'Users sign in' })
   @ApiBody({ type: SignInDTO })
@@ -53,15 +60,34 @@ export class AuthController {
   @Post('refresh')
   public async refreshToken(
     @Res({ passthrough: true }) res: Response,
-    @RefreshToken() oldRefreshToken: string | null,
+    @RefreshToken() refreshToken: string | null,
   ): Promise<{ accessToken: string }> {
-    if (!oldRefreshToken)
-      throw new UnauthorizedException('Invalid refresh token');
+    if (!refreshToken) throw new UnauthorizedException('Invalid refresh token');
 
-    const { accessToken, refreshToken }: AuthTokenPair =
-      await this.commandBus.execute(new RefreshTokenCommand(oldRefreshToken));
+    const accessToken = await this.commandBus.execute(
+      new RefreshTokenCommand(refreshToken),
+    );
 
-    res.cookie('refreshToken', refreshToken, { maxAge: 604_800_000 });
     return { accessToken };
+  }
+
+  @ApiOperation({ summary: 'Logout' })
+  @Public()
+  @Post('logout')
+  public async logout(
+    @Res({ passthrough: true }) res: Response,
+    @RefreshToken() oldRefreshToken: string | null,
+  ) {
+    if (!oldRefreshToken) throw new UnauthorizedException('No token provided');
+
+    await this.commandBus.execute(new LogoutCommand(oldRefreshToken));
+
+    res.cookie('refreshToken', '', { maxAge: 1 });
+  }
+
+  @Get('/me')
+  async getMe(@RefreshToken() refreshToken: string | null) {
+    if (!refreshToken) throw new UnauthorizedException('No token provided');
+    return await this.queryBus.execute(new GetCurrentUserQuery(refreshToken));
   }
 }

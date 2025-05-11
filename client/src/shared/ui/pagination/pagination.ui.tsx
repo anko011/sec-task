@@ -1,34 +1,15 @@
 import { ChevronLeftIcon, ChevronRightIcon } from '@radix-ui/react-icons';
 import { Button, Flex, type FlexProps, IconButton } from '@radix-ui/themes';
-import { type ReactNode, use } from 'react';
+import { type ReactNode } from 'react';
 
-/** Пропсы компонента {@link Pagination} */
-export type PaginationProps = FlexProps & {
-    /** Текущая страница */
-    currentPage: number;
-    /** Количество видимы страниц вокруг активной */
+import type { Paginated } from '~/shared/api';
+
+export type PaginationProps = Omit<FlexProps, 'onChange'> & {
+    data: Omit<Paginated<unknown>, 'items'>;
     maxVisiblePages?: number;
-    /** Обработчик смены страницы */
-    onPageChange?: (page: number) => void;
-    /** Общее количество страниц */
-    totalPages: Promise<number> | number;
+    onChange?: (params: { limit: number; offset: number }) => void;
 };
 
-/**
- * Вычисляет диапазон видимых страниц для пагинации.
- *
- * @param maxVisiblePages - Максимальное количество видимых страниц.
- * @param currentPage - Текущая страница.
- * @param totalPages - Общее количество страниц.
- * @returns Объект с начальной и конечной страницами диапазона.
- * startPage - Начальная страница диапазона.
- * endPage - Конечная страница диапазона.
- *
- * @example
- * const {startPage, endPage} = getPageRange(5, 10, 20);
- * console.log(startPage); // 8
- * console.log(endPage); // 12
- */
 function getPageRange(maxVisiblePages: number, currentPage: number, totalPages: number) {
     const half = Math.floor(maxVisiblePages / 2);
     let startPage = Math.max(1, currentPage - half);
@@ -41,35 +22,14 @@ function getPageRange(maxVisiblePages: number, currentPage: number, totalPages: 
     return { endPage, startPage };
 }
 
-/**
- * Компонент пагинации для навигации по страницам.
- *
- * @param props - Свойства компонента.
- * @param props.currentPage - Текущая активная страница.
- * @param [props.maxVisiblePages] - Максимальное количество видимых страниц в пагинации.
- * @param [props.onPageChange] - Функция обратного вызова, вызываемая при изменении страницы.
- * @param props.totalPages - Общее количество страниц.
- * @param [props...] - Дополнительные свойства для контейнера пагинации (например, стили).
- * @returns Компонент пагинации.
- *
- * @example
- * <Pagination
- *   currentPage={5}
- *   totalPages={20}
- *   onPageChange={(page) => console.log('Переход на страницу:', page)}
- * />
- */
-export function Pagination({
-    currentPage,
-    maxVisiblePages = 5,
-    onPageChange,
-    totalPages: tp,
-    ...props
-}: PaginationProps) {
-    const totalPages = use(Promise.resolve(tp));
+export function Pagination({ data, maxVisiblePages = 5, onChange, ...props }: PaginationProps) {
+    const { limit, offset, total } = data;
+    const currentPage = Math.floor(offset / limit) + 1;
+    const totalPages = Math.ceil(total / limit);
 
     const handlePageChange = (page: number) => {
-        if (page !== currentPage && page >= 1 && page <= totalPages) onPageChange?.(page);
+        const offset = (page - 1) * limit;
+        onChange?.({ limit, offset });
     };
 
     const renderPageButton = (page: number) => (

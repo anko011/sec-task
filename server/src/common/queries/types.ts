@@ -6,3 +6,8 @@ export type Paginated<T> = T extends (infer R)[]
       readonly offset: number;
     }
   : never;
+
+export type PaginationOptions = {
+  limit?: number;
+  offset?: number;
+};

@@ -1,8 +1,8 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { compare } from 'bcrypt';
+import { compare } from 'bcryptjs';
 
-import { UsersStorePort } from '../../../users/application/ports';
+import { UsersPort } from '../../../users/application/ports';
 
 import { AuthTokenPair } from '../entities';
 import { JwtServicePort, TokensStorePort } from '../ports';
@@ -12,7 +12,7 @@ import { SignInCommand } from './sign-in.command';
 @CommandHandler(SignInCommand)
 export class SignInCommandHandler implements ICommandHandler<SignInCommand> {
   public constructor(
-    private readonly usersStorePort: UsersStorePort,
+    private readonly usersPort: UsersPort,
     private readonly tokensPort: TokensStorePort,
     private readonly jwtServicePort: JwtServicePort,
   ) {}
@@ -21,12 +21,27 @@ export class SignInCommandHandler implements ICommandHandler<SignInCommand> {
     email,
     password,
   }: SignInCommand): Promise<AuthTokenPair> {
-    const user = await this.usersStorePort.findOne({ email });
+    const users = await this.usersPort.find({ email });
+
+    if (users.length !== 1)
+      throw new UnauthorizedException('Credentials are invalid');
+
+    const user = users[0];
 
     if (!user || !(await compare(password, user.password)))
       throw new UnauthorizedException('Credentials are invalid');
 
-    const payload = { sub: user.id, role: user.role };
+    const payload = {
+      sub: user.id,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        secondName: user.secondName,
+        patronymic: user.patronymic,
+        role: user.role,
+      },
+    };
 
     const { accessToken, refreshToken } =
       await this.jwtServicePort.createTokenPair(payload, '7d');

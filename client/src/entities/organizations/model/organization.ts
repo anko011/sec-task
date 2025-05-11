@@ -1,4 +1,4 @@
-import type { OrganizationType } from '~/entities/organization-types/@x/organizations';
+import type { OrganizationType } from '~/entities/organization-types';
 
 export type Organization = {
     id: string;
