@@ -5,8 +5,7 @@ import { Suspense } from 'react';
 import useSWR from 'swr';
 
 import { TaskCategoryBadge } from '~/entities/task-categories';
-import type { TaskStatus } from '~/entities/tasks';
-import { TaskDetail, TaskStatusBadge } from '~/entities/tasks';
+import { TaskDetail, TaskStatus, TaskStatusBadge } from '~/entities/tasks';
 import { Role, useCurrentUser } from '~/entities/users';
 import { axiosInstance } from '~/shared/api';
 import { Loader } from '~/shared/ui/loader';
@@ -90,7 +89,7 @@ export function TasksList({ actions, data, packageId, ...props }: TaskListProps)
                                 <DataList.Item>
                                     <DataList.Label minWidth="88px">Статус</DataList.Label>
                                     <DataList.Value>
-                                        <TaskStatusBadge status={getStatus(task)} />
+                                        <TaskStatusBadge status={getStatus(task) ?? TaskStatus.NEW} />
                                     </DataList.Value>
                                 </DataList.Item>
                             )}
