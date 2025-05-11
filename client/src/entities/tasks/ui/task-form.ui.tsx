@@ -37,6 +37,13 @@ function action(_: TaskFormState, formData: FormData): TaskFormState {
                 errors[key] = 'Обязательное поле';
             }
         }
+
+        if (key === 'nameId') {
+            if (!formData.has(key) || formData.get(key) === '' || formData.get(key) === '-1') {
+                errors[key] = 'Обязательное поле';
+            }
+        }
+
         if (!formData.has(key) || formData.get(key) === '') {
             errors[key] = 'Обязательное поле';
         }
@@ -54,7 +61,34 @@ export function TaskForm({ end, onSuccess, task }: TaskFormProps) {
     const [taskCategory, setTaskCategory] = useState<TaskCategory | undefined>(task?.category);
     const [taskName, setTaskName] = useState<TaskName | undefined>(task?.name);
 
+    const {
+        maskRef,
+        ref: numberRef,
+        value
+    } = useIMask(
+        {
+            definitions: {
+                0: /\d/
+            },
+            lazy: false,
+            mask: '000000',
+            overwrite: true,
+            placeholderChar: '_'
+        },
+        {
+            defaultValue: task?.number
+        }
+    );
+
     const submit = (prev: TaskFormState, formData: FormData) => {
+        const newErrors: { number?: string } = {};
+        if (maskRef.current != null) {
+            const nameField = maskRef.current;
+            if (!nameField.masked.isComplete) newErrors['number'] = 'Обязательное поле';
+        }
+
+        if (Object.keys(newErrors).length > 0) return { isSuccess: false, ...newErrors };
+
         const state = action(prev, formData);
         if (state.isSuccess) {
             if (taskCategory == null || taskName == null) throw new Error();
@@ -93,21 +127,6 @@ export function TaskForm({ end, onSuccess, task }: TaskFormProps) {
     const changeCategory = useCallback((category?: TaskCategory) => {
         setTaskCategory(category);
     }, []);
-
-    const { ref: numberRef, value } = useIMask(
-        {
-            definitions: {
-                0: /\d/
-            },
-            lazy: false,
-            mask: '000000',
-            overwrite: true,
-            placeholderChar: '_'
-        },
-        {
-            defaultValue: task?.number
-        }
-    );
 
     return (
         <Flex asChild direction="column" gap="2">

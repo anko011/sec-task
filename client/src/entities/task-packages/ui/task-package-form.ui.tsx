@@ -50,6 +50,34 @@ export function TaskPackageForm({
     const [tasks, setTasks] = useState<TaskDraft[]>([]);
     const [deletedTaskIds, setDeletedTaskIds] = useState<string[]>([]);
 
+    const { maskRef: incomingMaskRef, ref: incomingRef } = useIMask(
+        {
+            definitions: {
+                0: /\d/
+            },
+            lazy: false,
+            mask: '№ 000/000-00 от 00.00.0000',
+            overwrite: true,
+            placeholderChar: '_',
+            radix: '.'
+        },
+        { defaultValue: data?.incomingRequisite }
+    );
+
+    const { maskRef: outgoingMaskRef, ref: outgoingRef } = useIMask(
+        {
+            definitions: {
+                0: /\d/
+            },
+            lazy: false,
+            mask: '№ 000/000-00 от 00.00.0000',
+            overwrite: true,
+            placeholderChar: '_',
+            radix: '.'
+        },
+        { defaultValue: data?.outgoingRequisite }
+    );
+
     useEffect(() => {
         if (data != null) {
             setSelectedOrganizations(data.assignedOrganizationIds);
@@ -68,12 +96,32 @@ export function TaskPackageForm({
     }, [isApplyAllOrganization, orgIds, data?.assignedOrganizationIds]);
 
     const submit = async (_: TaskPackageFormState, formData: FormData): Promise<TaskPackageFormState> => {
+        const newErrors: { incomingRequisite?: string; outgoingRequisite?: string } = {};
+
+        if (outgoingMaskRef.current != null && incomingMaskRef.current != null) {
+            const outgoingField = outgoingMaskRef.current;
+            const incomingField = incomingMaskRef.current;
+
+            if (!outgoingField.masked.isComplete) {
+                newErrors.outgoingRequisite = 'Обязательное поле';
+            }
+
+            if (!incomingField.masked.isComplete) {
+                newErrors.incomingRequisite = 'Обязательное поле';
+            }
+        }
+
+        if (Object.keys(newErrors).length > 0) {
+            return { isSuccess: false, ...newErrors };
+        }
+
         const data = {
             ...Object.fromEntries(formData.entries()),
             assignedOrganizationIds: selectedOrganizations,
             deletedTaskIds,
             tasks
         } as TaskPackageFormValues;
+
         const state = await action(data);
 
         if (state.isSuccess) {
@@ -92,34 +140,6 @@ export function TaskPackageForm({
     };
 
     const [state, dispatch] = useActionState(submit, { isSuccess: true });
-
-    const { ref: incomingRef } = useIMask(
-        {
-            definitions: {
-                0: /\d/
-            },
-            lazy: false,
-            mask: '№ 000/000-00 от 00.00.0000',
-            overwrite: true,
-            placeholderChar: '_',
-            radix: '.'
-        },
-        { defaultValue: data?.incomingRequisite }
-    );
-
-    const { ref: outgoingRef } = useIMask(
-        {
-            definitions: {
-                0: /\d/
-            },
-            lazy: false,
-            mask: '№ 000/000-00 от 00.00.0000',
-            overwrite: true,
-            placeholderChar: '_',
-            radix: '.'
-        },
-        { defaultValue: data?.outgoingRequisite }
-    );
 
     return (
         <Flex direction="column" gap="4" minHeight="100%" p="4">
