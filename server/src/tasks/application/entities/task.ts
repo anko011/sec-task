@@ -234,7 +234,7 @@ export class Task extends BaseEntity {
 
     for (const organizationId of organizationIds) {
       const isExistExecution = this.executions.exists(
-        (execution) => execution.id === organizationId,
+        (execution) => execution.organization.id === organizationId,
       );
 
       if (!isExistExecution) {
@@ -248,10 +248,15 @@ export class Task extends BaseEntity {
       }
     }
 
-    for (const existExecutionId of this.executions.getIdentifiers()) {
-      if (!organizationIds.includes(existExecutionId)) {
+    const executions = this.executions.map(({ id, organization }) => ({
+      id,
+      organizationId: organization.id,
+    }));
+
+    for (const execution of executions) {
+      if (!organizationIds.includes(execution.organizationId)) {
         this.executions.remove(
-          Reference.createFromPK(TaskExecution, existExecutionId),
+          Reference.createFromPK(TaskExecution, execution.id),
         );
       }
     }

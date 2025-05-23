@@ -52,9 +52,10 @@ export class UpdateTaskPackageCommandHandler
       {
         populate: [
           'organizations:ref',
-          'tasks:ref',
+          'tasks',
           'attachments.filename',
-          'tasks.executions',
+          'tasks.executions.organization.id',
+          'tasks.executions.id',
         ],
       },
     );

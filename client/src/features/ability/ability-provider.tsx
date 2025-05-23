@@ -2,7 +2,7 @@ import type { ExtractSubjectType, MongoAbility } from '@casl/ability';
 import { AbilityBuilder, createMongoAbility } from '@casl/ability';
 import { createContextualCan } from '@casl/react';
 import type { Consumer, ReactNode } from 'react';
-import { createContext, use, useEffect, useState } from 'react';
+import { createContext, use } from 'react';
 
 import type { User } from '~/entities/users';
 import { Role, useCurrentUser } from '~/entities/users';
@@ -52,11 +52,6 @@ export const useAbility = () => {
 
 export const AbilityProvider = ({ children }: { children: ReactNode }) => {
     const { user } = useCurrentUser();
-    const [ability, setAbility] = useState<AppAbility>(createAbility(user));
-
-    useEffect(() => {
-        setAbility(createAbility(user));
-    }, [user]);
-
+    const ability = createAbility(user);
     return <AbilityContext.Provider value={ability}>{children}</AbilityContext.Provider>;
 };

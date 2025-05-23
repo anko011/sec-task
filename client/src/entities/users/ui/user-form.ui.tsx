@@ -1,7 +1,7 @@
 import { Flex } from '@radix-ui/themes';
 import { type ReactNode, useActionState, useState } from 'react';
 
-import { OrganizationsSelector } from '~/entities/organizations';
+import { type Organization, OrganizationsSelector } from '~/entities/organizations';
 
 import { ClearableTextField } from '~/shared/ui/clearable-text-field';
 import { FormField } from '~/shared/ui/form-field';
@@ -44,15 +44,22 @@ export function UserForm({ action, end, user }: UserFormProps) {
             : user.organization?.id
         : undefined;
 
+    const [orgId, setOrgId] = useState(organizationId);
+
+    const onChangeOrganization = (organization?: Organization) => {
+        setOrgId(organization?.id);
+    };
+
     const submit = async (errors: UserFormErrors, formData?: FormData): Promise<UserFormErrors> => {
         if (!action) return errors;
+        console.log(orgId);
         return action({
             firstName: formData?.get('firstName') as string,
             secondName: formData?.get('secondName') as string,
             patronymic: formData?.get('patronymic') as string,
             email: formData?.get('email') as string,
             password: formData?.get('password') as string,
-            organizationId: formData?.get('organizationId') as string,
+            organizationId: orgId,
             role
         });
     };
@@ -102,7 +109,11 @@ export function UserForm({ action, end, user }: UserFormProps) {
 
                 {!!role && role === Role.Assigner && (
                     <FormField error={errors.organizationId} label="Организация">
-                        <OrganizationsSelector defaultValue={organizationId} name="organizationId" />
+                        <OrganizationsSelector
+                            defaultValue={organizationId}
+                            onChange={onChangeOrganization}
+                            name="organizationId"
+                        />
                     </FormField>
                 )}
 

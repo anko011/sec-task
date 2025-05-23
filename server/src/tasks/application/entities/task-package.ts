@@ -222,7 +222,7 @@ export class TaskPackage extends BaseEntity {
       );
     }
 
-    this.updateTasks(dto.tasks);
+    this.updateTasks(dto.tasks, dto.assignedOrganizationIds);
   }
 
   public addTask(
@@ -286,32 +286,37 @@ export class TaskPackage extends BaseEntity {
 
   private updateTasks(
     taskDtos: UpdateTaskPackageCommand['dto']['tasks'],
+    assignedOrganizationIds: string[] | undefined,
   ): void {
-    const existingTaskMap = new Map(
-      this.tasks.getItems().map((task) => [task.id, task]),
-    );
+    const toUpdate = taskDtos.filter((t) => 'id' in t);
+    const toCreate = taskDtos.filter((t) => !('id' in t));
 
-    const updatedTaskIds = new Set<string>();
-    for (const dto of taskDtos) {
-      if ('id' in dto && existingTaskMap.has(dto.id)) {
-        const existingTask = existingTaskMap.get(dto.id)!;
-        existingTask.update(dto, this.organizations.getIdentifiers());
-        updatedTaskIds.add(existingTask.id);
-      } else {
-        if ('id' in dto) return;
-        const newTask = Task.createFromDto(
-          this,
-          dto,
-          this.organizations.getIdentifiers(),
-        );
-        updatedTaskIds.add(newTask.id);
-        this.tasks.add(newTask);
-      }
-    }
+    const toUpdateIds = toUpdate.map((t) => t.id);
+    const taskIds: Set<string> = new Set(toUpdateIds);
+
+    this.tasks.getItems().forEach((t) => {
+      if (!toUpdateIds.includes(t.id)) return;
+      const dto = toUpdate.find((d) => d.id === t.id);
+      if (!dto) return;
+      t.update(
+        dto,
+        assignedOrganizationIds ?? this.organizations.getIdentifiers(),
+      );
+    });
+
+    toCreate.forEach((dto) => {
+      const newTask = Task.createFromDto(
+        this,
+        dto as CreateTaskCommand['dto'],
+        assignedOrganizationIds ?? this.organizations.getIdentifiers(),
+      );
+      taskIds.add(newTask.id);
+      this.tasks.add(newTask);
+    });
 
     const toRemove = this.tasks
       .getItems()
-      .filter((task) => !updatedTaskIds.has(task.id));
+      .filter((task) => !taskIds.has(task.id));
 
     this.tasks.remove(toRemove);
   }

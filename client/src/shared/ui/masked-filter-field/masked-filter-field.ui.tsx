@@ -22,7 +22,12 @@ export function MaskedFilterField({ label, ref, onChange, ...props }: MaskedFilt
                 <Text size="2" wrap="nowrap">
                     {label}
                 </Text>
-                <ClearableTextField style={{ width: '100%' }} ref={ref} onChange={onChangeValue} {...props} />
+                <ClearableTextField
+                    style={{ width: '100%', minWidth: '200px' }}
+                    ref={ref}
+                    onChange={onChangeValue}
+                    {...props}
+                />
             </label>
         </Flex>
     );

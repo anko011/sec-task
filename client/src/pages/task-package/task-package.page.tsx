@@ -2,8 +2,8 @@ import { Badge, DataList, Flex, Link } from '@radix-ui/themes';
 import { useParams } from 'react-router';
 
 import { OrganizationsView } from '~/entities/organizations';
-import { type TaskPackageWithTasks, useTaskPackage } from '~/entities/task-packages';
-import { Can, useAbility } from '~/features/ability';
+import { TaskPackageStatus, type TaskPackageWithTasks, useTaskPackage } from '~/entities/task-packages';
+import { Can } from '~/features/ability';
 import { Loader } from '~/shared/ui/loader';
 import { TaskExecutionsAccordionByOrganizations } from './ui/task-executions-accordion-by-organizations.ui';
 import { TaskExecutionHistoryProvider, TaskStatusHistory } from './ui/task-status-history-list.ui';
@@ -58,7 +58,7 @@ function TaskPackageDetail({ taskPackage }: { taskPackage: TaskPackageWithTasks 
                             </Flex>
                             <TaskList
                                 actions={
-                                    user.role === Role.Assigner
+                                    user.role === Role.Assigner && taskPackage.status !== TaskPackageStatus.FIXED
                                         ? (task) => (
                                               <ChangeTaskStatusButton taskId={task.id} packageId={taskPackage.id} />
                                           )
@@ -74,10 +74,12 @@ function TaskPackageDetail({ taskPackage }: { taskPackage: TaskPackageWithTasks 
                                                     taskId={task.id}
                                                     openContentLabel="Открыть историю"
                                                     action={
-                                                        <ChangeTaskStatusButton
-                                                            taskId={task.id}
-                                                            packageId={taskPackage.id}
-                                                        />
+                                                        taskPackage.status !== TaskPackageStatus.FIXED && (
+                                                            <ChangeTaskStatusButton
+                                                                taskId={task.id}
+                                                                packageId={taskPackage.id}
+                                                            />
+                                                        )
                                                     }
                                                     content={<TaskStatusHistory />}
                                                 />

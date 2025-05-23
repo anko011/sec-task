@@ -49,8 +49,8 @@ export const CreateUserContract = BaseUserSchema.refine(
         return data.role !== Role.Assigner || data.organizationId !== undefined;
     },
     {
-        message: 'Organization is required for Assigner role',
-        path: ['organization']
+        message: 'Обязательное поле',
+        path: ['organizationId']
     }
 );
 
@@ -72,8 +72,8 @@ export const EditUserContract = z.preprocess(
             if (data.role === Role.Assigner && data.organizationId === undefined) {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
-                    message: 'Organization is required when role is Assigner',
-                    path: ['organization']
+                    message: 'Обязательное поле',
+                    path: ['organizationId']
                 });
             }
         })

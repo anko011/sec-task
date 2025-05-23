@@ -90,7 +90,7 @@ function FirstNameFilter() {
     return (
         <MaskedFilterField
             label="Имя"
-            defaultValue={filters.email}
+            defaultValue={filters.firstName}
             placeholder="Введите имя..."
             onChange={debounced}
             onClear={handleClear}
@@ -112,7 +112,7 @@ function SecondNameFilter() {
     return (
         <MaskedFilterField
             label="Фамилия"
-            defaultValue={filters.email}
+            defaultValue={filters.secondName}
             placeholder="Введите фамилию..."
             onChange={debounced}
             onClear={handleClear}
@@ -134,7 +134,7 @@ function PatronymicNameFilter() {
     return (
         <MaskedFilterField
             label="Отчество"
-            defaultValue={filters.email}
+            defaultValue={filters.patronymic}
             placeholder="Введите отчество..."
             onChange={debounced}
             onClear={handleClear}
@@ -156,7 +156,7 @@ function OrganizationNameFilter() {
     return (
         <MaskedFilterField
             label="Название организации"
-            defaultValue={filters.email}
+            defaultValue={filters.organizationName}
             placeholder="Введите название организации..."
             onChange={debounced}
             onClear={handleClear}

@@ -139,7 +139,9 @@ function ArchivedFilter() {
     return (
         <Flex asChild align="center" gap="2">
             <label>
-                <Text size="2">Статус</Text>
+                <Text size="2" wrap="nowrap">
+                    Статус
+                </Text>
                 <Select.Root onValueChange={onChange} defaultValue="-1">
                     <Select.Trigger />
                     <Select.Content>

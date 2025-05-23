@@ -13,13 +13,21 @@ import { TaskExecutionHistoryContext } from './task-status-history-list.ui';
 import { TaskExecutionContext, TaskExecutionsContext } from './task-executions-accordion-by-organizations.ui';
 import { axiosInstance } from '~/shared/api';
 import { TasksViewContext } from './tasks-view.ui';
+import type { IconButtonProps } from '@radix-ui/themes';
 
 const ChangeTaskStatusContract = z.object({
     status: z.nativeEnum(TaskStatus),
     comment: z.string().nonempty()
 });
 
-export function ChangeTaskStatusButton({ packageId, taskId }: { packageId: string; taskId: string }) {
+export function ChangeTaskStatusButton({
+    packageId,
+    taskId,
+    ...props
+}: {
+    packageId: string;
+    taskId: string;
+} & IconButtonProps) {
     const execution = useStrictContext(TaskExecutionContext);
     const histories = useContext(TaskExecutionHistoryContext);
     const executions = useContext(TaskExecutionsContext);
@@ -44,7 +52,7 @@ export function ChangeTaskStatusButton({ packageId, taskId }: { packageId: strin
 
     return (
         <UpsertEntityDialog.Root onOpenChange={setIsOpen} open={isOpen} title="Смена статуса">
-            <UpsertEntityDialog.Trigger tooltip="Изменить статус">
+            <UpsertEntityDialog.Trigger {...props} tooltip="Изменить статус">
                 <PaperPlaneIcon />
             </UpsertEntityDialog.Trigger>
             <UpsertEntityDialog.Content minHeight="50vh">
