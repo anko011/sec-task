@@ -1,23 +1,25 @@
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { GetCurrentUserQuery } from './get-current-user.query';
-import { UsersPort } from '../../../../users/application/ports';
 import { JwtServicePort } from '../../ports';
 import { User } from '../../../../users/application/entities';
 import { UnauthorizedException } from '@nestjs/common';
+import { EntityRepository } from '@mikro-orm/better-sqlite';
+import { InjectRepository } from '@mikro-orm/nestjs';
 
 @QueryHandler(GetCurrentUserQuery)
 export class GetCurrentUserQueryHandler
   implements IQueryHandler<GetCurrentUserQuery>
 {
   constructor(
-    private readonly usersPort: UsersPort,
+    @InjectRepository(User)
+    private readonly usersRepository: EntityRepository<User>,
     private readonly jwtServicePort: JwtServicePort,
   ) {}
 
   async execute({ refreshToken }: GetCurrentUserQuery): Promise<User> {
     const payload = await this.jwtServicePort.decode(refreshToken);
-    const users = await this.usersPort.find({ id: payload.sub });
-    if (users.length !== 1) throw new UnauthorizedException('Invalid token');
-    return users[0];
+    const user = await this.usersRepository.findOne({ id: payload.sub });
+    if (!user) throw new UnauthorizedException('Invalid token');
+    return user;
   }
 }

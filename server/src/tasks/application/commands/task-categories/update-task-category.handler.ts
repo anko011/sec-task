@@ -1,28 +1,42 @@
+import { BadRequestException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { EntityManager, EntityRepository } from '@mikro-orm/better-sqlite';
 
-import { TaskCategoriesPort } from '../../ports';
+import { deepCleanObject } from '~/common/utils';
+
 import { TaskCategory } from '../../entities';
 
 import { UpdateTaskCategoryCommand } from './update-task-category.command';
-import { BadRequestException } from '@nestjs/common';
 
 @CommandHandler(UpdateTaskCategoryCommand)
 export class UpdateTaskCategoryCommandHandler
   implements ICommandHandler<UpdateTaskCategoryCommand>
 {
-  public constructor(private readonly taskCategoriesPort: TaskCategoriesPort) {}
+  public constructor(
+    @InjectRepository(TaskCategory)
+    private readonly taskCategoriesRepository: EntityRepository<TaskCategory>,
+    private readonly entityManager: EntityManager,
+  ) {}
 
   public async execute({
+    id,
     dto,
   }: UpdateTaskCategoryCommand): Promise<TaskCategory> {
-    const categories = await this.taskCategoriesPort.find({ id: dto.id });
-    if (categories.length !== 1)
-      throw new BadRequestException(`Task category ${dto.id} not found.`);
-    const category = categories[0];
+    const taskCategory = await this.taskCategoriesRepository.findOne({
+      id,
+    });
 
-    category.update(dto);
+    if (!taskCategory)
+      throw new BadRequestException(`Task category with id ${id} not found`);
 
-    await this.taskCategoriesPort.save(category);
-    return category;
+    const updatedTaskName = this.taskCategoriesRepository.assign(
+      taskCategory,
+      deepCleanObject(dto),
+    );
+
+    await this.entityManager.persistAndFlush(updatedTaskName);
+
+    return updatedTaskName;
   }
 }

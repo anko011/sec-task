@@ -5,5 +5,5 @@ export class CreateTaskNameDTO {
   @ApiProperty()
   @IsString()
   @IsNotEmpty({ message: 'Обязательное поле' })
-  readonly name: string;
+  readonly title: string;
 }

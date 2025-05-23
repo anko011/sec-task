@@ -1,52 +1,135 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { BadRequestException } from '@nestjs/common';
-
-import { TaskCategoriesPort, TaskPackagesPort } from '../../ports';
+import {
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { EntityManager, EntityRepository } from '@mikro-orm/better-sqlite';
 import { TaskPackage } from '../../entities';
-
 import { UpdateTaskPackageCommand } from './update-task-package.command';
-import { OrganizationsPort } from '../../../../organizations/applications/ports';
+import * as path from 'node:path';
+import * as fs from 'node:fs';
 
 @CommandHandler(UpdateTaskPackageCommand)
 export class UpdateTaskPackageCommandHandler
   implements ICommandHandler<UpdateTaskPackageCommand>
 {
-  public constructor(
-    private readonly taskPackagesPort: TaskPackagesPort,
-    private readonly taskCategoriesPort: TaskCategoriesPort,
-    private readonly organizationsPort: OrganizationsPort,
+  private readonly logger = new Logger(UpdateTaskPackageCommandHandler.name);
+
+  constructor(
+    @InjectRepository(TaskPackage)
+    private readonly taskPackagesRepository: EntityRepository<TaskPackage>,
+    private readonly entityManager: EntityManager,
   ) {}
 
   public async execute({
+    packageId,
     dto,
   }: UpdateTaskPackageCommand): Promise<TaskPackage> {
-    const taskPackages = await this.taskPackagesPort.find({ id: dto.id });
-
-    if (taskPackages.length !== 1)
-      throw new BadRequestException(`Task package with id ${dto.id} not found`);
-
-    const taskPackage = taskPackages[0];
-
-    if (dto.assignedOrganizationIds) {
-      const existingOrganizationIds = (
-        await this.organizationsPort.find({
-          id: { $in: dto.assignedOrganizationIds },
-        })
-      ).map(({ id }) => id);
-
-      const nonExistingOrganizationIds = dto.assignedOrganizationIds.filter(
-        (id) => !existingOrganizationIds.includes(id),
-      );
-
-      if (nonExistingOrganizationIds.length > 0)
-        throw new BadRequestException(
-          `Organizations with id ${nonExistingOrganizationIds.join(', ')} are not exists`,
-        );
-    }
+    const taskPackage = await this.getTaskPackage(packageId);
 
     taskPackage.update(dto);
+    await this.entityManager.persistAndFlush(taskPackage);
 
-    await this.taskPackagesPort.save(taskPackage);
+    const loaded = await taskPackage.init({
+      refresh: true,
+      populate: ['attachments.filename'],
+    });
+
+    if (!loaded)
+      throw new InternalServerErrorException(
+        'Failed to initialize task package',
+      );
+    await this.cleanupOrphanedFiles(loaded);
+
+    return loaded;
+  }
+
+  private async getTaskPackage(packageId: string): Promise<TaskPackage> {
+    const taskPackage = await this.taskPackagesRepository.findOne(
+      { id: packageId },
+      {
+        populate: [
+          'organizations:ref',
+          'tasks:ref',
+          'attachments.filename',
+          'tasks.executions',
+        ],
+      },
+    );
+
+    if (!taskPackage)
+      throw new NotFoundException(
+        `Task package with id ${packageId} not found`,
+      );
+
     return taskPackage;
+  }
+
+  private async cleanupOrphanedFiles(taskPackage: TaskPackage): Promise<void> {
+    const uploadDir = path.join(process.cwd(), 'uploads', taskPackage.id);
+    let shouldCheckForEmptyDir = false;
+
+    try {
+      try {
+        await fs.promises.access(uploadDir, fs.constants.F_OK);
+      } catch {
+        this.logger.log(
+          `Directory ${uploadDir} does not exist, skipping cleanup`,
+        );
+        return;
+      }
+
+      let filesInDir: string[];
+      try {
+        filesInDir = await fs.promises.readdir(uploadDir);
+      } catch (err) {
+        this.logger.error(`Error reading directory ${uploadDir}:`, err);
+        return;
+      }
+
+      const attachments = taskPackage.attachments;
+      const attachmentFiles = attachments.map(
+        (attachment) => attachment.filename,
+      );
+
+      const filesToDelete = filesInDir.filter(
+        (file) => !attachmentFiles.includes(file),
+      );
+
+      if (filesToDelete.length > 0) {
+        shouldCheckForEmptyDir = true;
+        for (const file of filesToDelete) {
+          const filePath = path.join(uploadDir, file);
+          try {
+            await fs.promises.unlink(filePath);
+            this.logger.log(`Deleted orphaned file: ${filePath}`);
+          } catch (err) {
+            this.logger.error(`Failed to delete file ${filePath}:`, err);
+          }
+        }
+      }
+
+      if (shouldCheckForEmptyDir) {
+        try {
+          const remainingFiles = await fs.promises.readdir(uploadDir);
+          if (remainingFiles.length === 0) {
+            await fs.promises.rmdir(uploadDir);
+            this.logger.log(`Deleted empty directory: ${uploadDir}`);
+          }
+        } catch (err) {
+          this.logger.error(
+            `Error checking/removing directory ${uploadDir}:`,
+            err,
+          );
+        }
+      }
+    } catch (err) {
+      this.logger.error(
+        `Unexpected error cleaning files for package ${taskPackage.id}:`,
+        err,
+      );
+    }
   }
 }

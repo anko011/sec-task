@@ -1,14 +1,10 @@
 import { ICommand } from '@nestjs/cqrs';
-import { UpdateTaskDTO as EntityUpdateDTO } from '../../entities/task-package';
-
-type UpdateTaskDTO = Omit<EntityUpdateDTO, 'category' | 'name'> & {
-  categoryId?: string;
-  nameId?: string;
-};
+import { CreateTaskCommand } from './create-task.command';
 
 export class UpdateTaskCommand implements ICommand {
   constructor(
     readonly packageId: string,
-    readonly dto: UpdateTaskDTO,
+    readonly id: string,
+    readonly dto: Partial<CreateTaskCommand['dto']>,
   ) {}
 }

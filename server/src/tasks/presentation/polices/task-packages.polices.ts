@@ -7,7 +7,8 @@ export const [
   CreateTaskPackagePolicy,
   UpdateTaskPackagePolicy,
   DeleteTaskPackagePolicy,
+  FixTaskPackagePolicy,
 ] = createSubjectPolices(
-  [Action.Read, Action.Create, Action.Update, Action.Delete],
+  [Action.Read, Action.Create, Action.Update, Action.Delete, Action.Fix],
   TaskPackage,
 );

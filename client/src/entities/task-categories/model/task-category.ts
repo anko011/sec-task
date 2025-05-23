@@ -1,7 +1,5 @@
-import type { BadgeProps } from '@radix-ui/themes';
+import type { z } from 'zod';
 
-export type TaskCategory = {
-    id: string;
-    name: string;
-    color: BadgeProps['color'];
-};
+import type { GetTaskCategoryContract } from '../api/contracts';
+
+export type TaskCategory = z.infer<typeof GetTaskCategoryContract>;

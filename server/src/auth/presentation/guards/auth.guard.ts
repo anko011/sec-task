@@ -10,15 +10,18 @@ import { Request } from 'express';
 
 import { IS_PUBLIC_KEY } from '../decorators';
 import { ConfigService } from '@nestjs/config';
-import { UsersPort } from '../../../users/application/ports';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { User } from '~/users/application/entities';
+import { EntityRepository } from '@mikro-orm/better-sqlite';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(
+    @InjectRepository(User)
+    private readonly usersRepository: EntityRepository<User>,
     private readonly jwtService: JwtService,
     private readonly reflector: Reflector,
     private readonly configService: ConfigService,
-    private readonly usersPort: UsersPort,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -47,10 +50,10 @@ export class AuthGuard implements CanActivate {
 
       throw err;
     }
-    const users = await this.usersPort.find({ id: userId });
-    if (users.length !== 1) throw new UnauthorizedException(`Invalid data`);
+    const user = await this.usersRepository.findOne({ id: userId });
+    if (!user) throw new UnauthorizedException(`Invalid data`);
 
-    request['user'] = users[0];
+    request['user'] = user;
 
     return true;
   }

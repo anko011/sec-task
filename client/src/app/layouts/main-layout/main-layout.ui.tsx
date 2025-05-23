@@ -159,7 +159,7 @@ export function UserDropdown() {
 export function ContentArea({ children, height }: { children?: ReactNode; height: number }) {
     return (
         <ScrollArea asChild style={{ height }}>
-            <Box p="2">{children}</Box>
+            <Box p="4">{children}</Box>
         </ScrollArea>
     );
 }

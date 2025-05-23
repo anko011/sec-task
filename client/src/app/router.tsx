@@ -4,18 +4,24 @@ import { UserProvider } from '~/entities/users';
 import { AbilityProvider } from '~/features/ability';
 import { AuthProvider, ProtectedRoute } from '~/features/auth';
 import { ThemeProvider } from '~/features/themes/change';
-import { OrganizationTypesPage } from '~/pages/organization-types';
-import { OrganizationsPage } from '~/pages/organizations';
-import { SignInPage } from '~/pages/sign-in';
-import { TaskCategoriesPage } from '~/pages/task-categories';
-import { TaskNamesPage } from '~/pages/task-names';
-import { TaskPackagePage } from '~/pages/task-package';
-import { CreateTaskPackagePage } from '~/pages/task-package-create';
-import { EditTaskPackagePage } from '~/pages/task-package-edit';
-import { TaskPackagesPage } from '~/pages/task-packages';
-import { UsersPage } from '~/pages/users';
-
 import { MainLayout } from './layouts/main-layout';
+import { ToastContainer } from 'react-toastify';
+import { lazy, Suspense } from 'react';
+
+const SignInPage = lazy(async () => import('~/pages/sign-in/sign-in.page'));
+
+const OrganizationTypesPage = lazy(async () => import('~/pages/organization-types/organization-types.page'));
+const OrganizationsPage = lazy(async () => import('~/pages/organizations/organizations.page'));
+
+const TaskCategoriesPage = lazy(async () => import('~/pages/task-categories/task-categories-page.ui'));
+const TaskNamesPage = lazy(async () => import('~/pages/task-names/task-names.page'));
+
+const TaskPackagePage = lazy(async () => import('~/pages/task-package/task-package.page'));
+const CreateTaskPackagePage = lazy(async () => import('~/pages/task-package-create/task-package-create.ui'));
+const EditTaskPackagePage = lazy(async () => import('~/pages/task-package-edit/task-package-edit.ui'));
+const TaskPackagesPage = lazy(async () => import('~/pages/task-packages'));
+
+const UsersPage = lazy(async () => import('~/pages/users/users.page'));
 
 export const router = createBrowserRouter([
     {
@@ -62,7 +68,11 @@ export const router = createBrowserRouter([
                                 path: ':id'
                             },
                             {
-                                element: <CreateTaskPackagePage />,
+                                element: (
+                                    <Suspense>
+                                        <CreateTaskPackagePage />
+                                    </Suspense>
+                                ),
                                 path: 'create'
                             }
                         ],
@@ -99,6 +109,7 @@ export const router = createBrowserRouter([
                     <AbilityProvider>
                         <ThemeProvider>
                             <Outlet />
+                            <ToastContainer stacked position="bottom-right" />
                         </ThemeProvider>
                     </AbilityProvider>
                 </AuthProvider>

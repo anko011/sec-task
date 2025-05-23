@@ -1,5 +1,11 @@
-import { IsArray, IsNotEmpty, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsArray, IsNotEmpty, IsString, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+
+import { IsExistingId } from '~/common/validators';
+import { Organization } from '~/organizations/applications/entities';
+
+import { CreateTaskDTO } from './create-task.dto';
 
 export class CreateTaskPackageDTO {
   @ApiProperty()
@@ -14,6 +20,11 @@ export class CreateTaskPackageDTO {
 
   @ApiProperty()
   @IsArray()
-  @IsString({ each: true })
+  @IsExistingId(Organization, { each: true })
   readonly assignedOrganizationIds: string[];
+
+  @ApiProperty({ type: [CreateTaskDTO] })
+  @ValidateNested({ each: true })
+  @Type(() => CreateTaskDTO)
+  readonly tasks: CreateTaskDTO[];
 }

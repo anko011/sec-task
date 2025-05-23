@@ -1,1 +1,6 @@
-export * from './repository';
+export {
+    GetOrganizationTypeContract,
+    GetPaginatedOrganizationTypesContract,
+    CreateOrganizationTypeContract,
+    EditOrganizationTypeContract
+} from './contracts';

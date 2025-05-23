@@ -1,60 +1,61 @@
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 
-import { Task } from '../../entities/task-package';
-import { Paginated, PaginationOptions } from '../../../../common/queries';
-import { TaskPackagesPort } from '../../ports';
+import { Task, TaskPackage } from '../../entities/';
+import { Paginated, prepareSearchConditions } from '../../../../common/queries';
 
 import { FindPaginatedTasksQuery } from './find-paginated-tasks.query';
-import { BadRequestException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { EntityRepository } from '@mikro-orm/better-sqlite';
 
 @QueryHandler(FindPaginatedTasksQuery)
 export class FindPaginatedTasksQueryHandler
   implements IQueryHandler<FindPaginatedTasksQuery>
 {
-  constructor(private readonly taskPackagesPort: TaskPackagesPort) {}
+  constructor(
+    @InjectRepository(TaskPackage)
+    private readonly taskPackagesRepository: EntityRepository<TaskPackage>,
+  ) {}
 
   async execute({
     packageId,
     where,
     options,
   }: FindPaginatedTasksQuery): Promise<Paginated<Task[]>> {
-    const packages = await this.taskPackagesPort.find({
+    const taskPackage = await this.taskPackagesRepository.findOne({
       id: packageId,
     });
 
-    if (packages.length !== 1)
-      throw new BadRequestException(`Package ${packageId} not found`);
+    if (!taskPackage)
+      throw new NotFoundException(
+        `Task package with id ${packageId} not found`,
+      );
 
-    const taskPackage = packages[0];
-
-    const items = taskPackage.tasks.filter((item) => {
-      const isNumberMatch =
-        where?.number == null ||
-        item.number
-          .trim()
-          .toLowerCase()
-          .includes(where.number.trim().toLowerCase());
-
-      const isNameId = where?.nameId == null || item.name.id === where.nameId;
-
-      return isNumberMatch && isNameId;
-    });
-
-    return {
-      items: this.applyPagination(items, options),
-      total: taskPackage.tasks.length,
-      limit: options?.limit ?? 10,
-      offset: options?.offset ?? 0,
-    };
-  }
-
-  private applyPagination(
-    entities: Task[],
-    options?: PaginationOptions,
-  ): Task[] {
     const limit = options?.limit ?? 10;
     const offset = options?.offset ?? 0;
 
-    return entities.slice(offset, offset + limit);
+    const conditions = prepareSearchConditions({
+      name: where?.nameId,
+      category: where?.categoryId,
+      number: where?.number,
+      dangerStatus: where?.dangerStatus,
+    });
+
+    const [items, total] = await Promise.all([
+      taskPackage.tasks.matching({
+        where: conditions,
+        populate: ['category', 'name'],
+        limit,
+        offset,
+      }),
+      taskPackage.tasks.loadCount({ where: conditions }),
+    ]);
+
+    return {
+      items,
+      total,
+      limit,
+      offset,
+    };
   }
 }

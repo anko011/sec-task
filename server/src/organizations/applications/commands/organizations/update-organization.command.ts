@@ -1,9 +1,9 @@
 import { ICommand } from '@nestjs/cqrs';
 
 export class UpdateOrganizationCommand implements ICommand {
-  public constructor(
-    public readonly dto: {
-      readonly id: string;
+  constructor(
+    readonly id: string,
+    readonly dto: {
       readonly name?: string;
       readonly typeId?: string;
       readonly isArchived?: boolean;

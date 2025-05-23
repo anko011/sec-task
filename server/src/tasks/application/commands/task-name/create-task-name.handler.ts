@@ -1,22 +1,24 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { EntityManager, EntityRepository } from '@mikro-orm/better-sqlite';
+
+import { TaskName } from '../../entities';
 
 import { CreateTaskNameCommand } from './create-task-name.command';
-import { TaskNamesPort } from '../../ports';
-import { TaskNameFactory } from '../../factories';
-import { TaskName } from '../../entities';
 
 @CommandHandler(CreateTaskNameCommand)
 export class CreateTaskNameCommandHandler
   implements ICommandHandler<CreateTaskNameCommand>
 {
   constructor(
-    private readonly taskNamesPort: TaskNamesPort,
-    private readonly taskNameFactory: TaskNameFactory,
+    @InjectRepository(TaskName)
+    private readonly taskNamesRepository: EntityRepository<TaskName>,
+    private readonly entityManager: EntityManager,
   ) {}
 
   public async execute({ dto }: CreateTaskNameCommand): Promise<TaskName> {
-    const taskName = this.taskNameFactory.create(dto);
-    await this.taskNamesPort.save(taskName);
+    const taskName = this.taskNamesRepository.create(dto);
+    await this.entityManager.persistAndFlush(taskName);
     return taskName;
   }
 }

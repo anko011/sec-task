@@ -1,7 +1,9 @@
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import { Paginated } from '../../../../common/queries';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { EntityRepository } from '@mikro-orm/better-sqlite';
 
-import { TaskCategoriesPort } from '../../ports';
+import { Paginated, prepareSearchConditions } from '~/common/queries';
+
 import { TaskCategory } from '../../entities';
 
 import { FindPaginatedTaskCategoriesQuery } from './find-paginated-task-categories.query';
@@ -10,16 +12,19 @@ import { FindPaginatedTaskCategoriesQuery } from './find-paginated-task-categori
 export class FindPaginatedTaskCategoriesHandler
   implements IQueryHandler<FindPaginatedTaskCategoriesQuery>
 {
-  constructor(private readonly taskCategoriesPort: TaskCategoriesPort) {}
+  constructor(
+    @InjectRepository(TaskCategory)
+    private readonly taskCategoriesRepository: EntityRepository<TaskCategory>,
+  ) {}
 
   async execute({
     where,
     options,
   }: FindPaginatedTaskCategoriesQuery): Promise<Paginated<TaskCategory[]>> {
-    const [items, total] = await Promise.all([
-      this.taskCategoriesPort.find(where, options),
-      this.taskCategoriesPort.count(where),
-    ]);
+    const [items, total] = await this.taskCategoriesRepository.findAndCount(
+      prepareSearchConditions({ ...where }, { exactMatchFields: ['color'] }),
+      options,
+    );
 
     return {
       items,

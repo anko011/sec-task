@@ -1,4 +1,4 @@
-import { FindPaginatedTaskPackagesQueryHandler } from './find-paginated-task-packages.query-handler';
+import { FindPaginatedTaskPackagesQueryHandler } from './find-paginated-task-packages.handler';
 import { FindTaskPackageQueryHandler } from './find-task-package.query-handler';
 
 export { FindTaskPackageQuery } from './find-task-package.query';

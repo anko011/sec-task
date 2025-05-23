@@ -1,24 +1,26 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { EntityManager, EntityRepository } from '@mikro-orm/better-sqlite';
+
+import { TaskCategory } from '../../entities';
 
 import { CreateTaskCategoryCommand } from './create-task-category.command';
-import { TaskCategoriesPort } from '../../ports';
-import { TaskCategoryFactory } from '../../factories';
-import { TaskCategory } from '../../entities';
 
 @CommandHandler(CreateTaskCategoryCommand)
 export class CreateTaskCategoryCommandHandler
   implements ICommandHandler<CreateTaskCategoryCommand>
 {
   constructor(
-    private readonly taskCategoriesPort: TaskCategoriesPort,
-    private readonly taskCategoryFactory: TaskCategoryFactory,
+    @InjectRepository(TaskCategory)
+    private readonly taskCategoriesRepository: EntityRepository<TaskCategory>,
+    private readonly entityManager: EntityManager,
   ) {}
 
   public async execute({
     dto,
   }: CreateTaskCategoryCommand): Promise<TaskCategory> {
-    const taskCategory = this.taskCategoryFactory.create(dto);
-    await this.taskCategoriesPort.save(taskCategory);
+    const taskCategory = this.taskCategoriesRepository.create(dto);
+    await this.entityManager.persistAndFlush(taskCategory);
     return taskCategory;
   }
 }

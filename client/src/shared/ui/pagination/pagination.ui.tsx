@@ -1,13 +1,13 @@
 import { ChevronLeftIcon, ChevronRightIcon } from '@radix-ui/react-icons';
 import { Button, Flex, type FlexProps, IconButton } from '@radix-ui/themes';
-import { type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import type { Paginated } from '~/shared/api';
 
 export type PaginationProps = Omit<FlexProps, 'onChange'> & {
     data: Omit<Paginated<unknown>, 'items'>;
     maxVisiblePages?: number;
-    onChange?: (params: { limit: number; offset: number }) => void;
+    onChange?: (params: { limit: number; offset: number; total?: number }) => void;
 };
 
 function getPageRange(maxVisiblePages: number, currentPage: number, totalPages: number) {
@@ -29,7 +29,7 @@ export function Pagination({ data, maxVisiblePages = 5, onChange, ...props }: Pa
 
     const handlePageChange = (page: number) => {
         const offset = (page - 1) * limit;
-        onChange?.({ limit, offset });
+        onChange?.({ limit, offset, total });
     };
 
     const renderPageButton = (page: number) => (

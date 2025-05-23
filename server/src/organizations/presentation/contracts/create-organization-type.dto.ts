@@ -5,5 +5,5 @@ export class CreateOrganizationTypeDTO {
   @ApiProperty()
   @IsString()
   @IsNotEmpty({ message: 'Обязательное поле' })
-  public readonly name: string;
+  public readonly title: string;
 }

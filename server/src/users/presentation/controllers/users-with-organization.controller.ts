@@ -5,7 +5,6 @@ import { ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { ApiPaginatedResponse, Paginated } from '../../../common/queries';
 import { Role } from '../../application/entities';
 import {
-  FindPaginatedUsersQuery,
   FindPaginatedUsersWithOrganizationQuery,
   UserWithOrganization,
 } from '../../application/queries/users';
@@ -35,7 +34,7 @@ export class UsersWithOrganizationController {
     @Query('role') role?: Role,
     @Query('organizationName') organizationName?: string,
   ): Promise<Paginated<UserWithOrganization[]>> {
-    return this.queryBus.execute<FindPaginatedUsersQuery>(
+    return this.queryBus.execute(
       new FindPaginatedUsersWithOrganizationQuery(
         { firstName, secondName, patronymic, email, role, organizationName },
         { limit, offset },

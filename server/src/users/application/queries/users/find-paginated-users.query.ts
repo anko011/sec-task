@@ -1,10 +1,17 @@
 import { IQuery } from '@nestjs/cqrs';
 import { PaginationOptions } from '../../../../common/queries';
-import { UserFilterCriteria } from '../../ports/users.port';
+import { Role } from '~/users/application/entities';
 
 export class FindPaginatedUsersQuery implements IQuery {
-  public constructor(
-    public readonly where?: UserFilterCriteria,
-    public readonly options?: PaginationOptions,
+  constructor(
+    readonly where?: {
+      firstName?: string;
+      secondName?: string;
+      patronymic?: string;
+      organizationId?: string;
+      email?: string;
+      role?: Role;
+    },
+    readonly options?: PaginationOptions,
   ) {}
 }

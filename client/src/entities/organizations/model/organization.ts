@@ -1,8 +1,4 @@
-import type { OrganizationType } from '~/entities/organization-types';
+import type { z } from 'zod';
+import type { GetOrganizationContract } from '../api/contracts';
 
-export type Organization = {
-    id: string;
-    type: OrganizationType;
-    name: string;
-    isArchived: boolean;
-};
+export type Organization = z.infer<typeof GetOrganizationContract>;

@@ -9,8 +9,8 @@ export type TaskCategoryBadgeProps = BadgeProps & {
 
 export function TaskCategoryBadge({ category, ...props }: TaskCategoryBadgeProps) {
     return (
-        <Badge color={category.color} {...props}>
-            {category.name}
+        <Badge color={category.color as BadgeProps['color']} {...props}>
+            {category.title}
         </Badge>
     );
 }

@@ -1,44 +1,58 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsEnum, IsNotEmpty, IsString } from 'class-validator';
-import { TaskDangerStatus } from '../../application/entities';
+import {
+  IsArray,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
+import { IsExistingId } from '~/common/validators';
+import {
+  TaskCategory,
+  TaskDangerStatus,
+  TaskName,
+} from '../../application/entities';
 
 export class CreateTaskDTO {
   @ApiProperty()
+  @IsNotEmpty({ message: 'Обязательное поле' })
   @IsString()
-  readonly additionalInformation?: string;
-
-  @ApiProperty()
-  @IsNotEmpty()
-  @IsString()
+  @IsExistingId(TaskName)
   readonly nameId: string;
 
   @ApiProperty()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Обязательное поле' })
+  @IsString()
+  @IsExistingId(TaskCategory)
+  readonly categoryId: string;
+
+  @ApiProperty()
+  @IsNotEmpty({ message: 'Обязательное поле' })
   @IsString()
   readonly number: string;
 
   @ApiProperty()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Обязательное поле' })
   @IsString()
   readonly description: string;
 
   @ApiProperty()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Обязательное поле' })
   @IsEnum(TaskDangerStatus)
   readonly dangerStatus: TaskDangerStatus;
 
   @ApiProperty()
-  @IsNotEmpty()
+  @IsArray()
+  @IsString({ each: true })
+  readonly bdu: string[];
+
+  @ApiProperty()
+  @IsArray()
+  @IsString({ each: true })
+  readonly cve: string[];
+
+  @ApiProperty()
   @IsString()
-  readonly categoryId: string;
-
-  @ApiProperty()
-  @IsArray()
-  @IsString({ each: true })
-  readonly BDU: string[];
-
-  @ApiProperty()
-  @IsArray()
-  @IsString({ each: true })
-  readonly CVE: string[];
+  @IsOptional()
+  readonly additionalInformation?: string;
 }

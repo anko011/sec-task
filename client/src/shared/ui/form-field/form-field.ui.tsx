@@ -1,9 +1,21 @@
 import { Flex, Text } from '@radix-ui/themes';
 import type { ReactNode } from 'react';
 
-type FormFieldProps = { children?: ReactNode; direction?: 'column' | 'row'; error?: string; label: string };
+type FormFieldProps = { children?: ReactNode; direction?: 'column' | 'row'; error?: string; label?: string };
 
 export function FormField({ children, direction = 'column', error, label }: FormFieldProps) {
+    if (!label)
+        return (
+            <Flex direction="column" width="100%" gap="1">
+                {children}
+                {error ? (
+                    <Text color="red" size="1">
+                        {error}
+                    </Text>
+                ) : null}
+            </Flex>
+        );
+
     return (
         <Flex asChild direction={direction} gap="2">
             <label style={{ width: '100%' }}>

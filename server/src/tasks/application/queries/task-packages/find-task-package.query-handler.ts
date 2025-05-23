@@ -1,7 +1,8 @@
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { EntityRepository } from '@mikro-orm/better-sqlite';
 
-import { TaskPackagesPort } from '../../ports';
 import { TaskPackage } from '../../entities/task-package';
 
 import { FindTaskPackageQuery } from './find-task-package.query';
@@ -11,14 +12,25 @@ export class FindTaskPackageQueryHandler
   implements IQueryHandler<FindTaskPackageQuery>
 {
   public constructor(
-    private readonly taskPackagesRepository: TaskPackagesPort,
+    @InjectRepository(TaskPackage)
+    private readonly taskPackagesRepository: EntityRepository<TaskPackage>,
   ) {}
 
   public async execute({ id }: FindTaskPackageQuery): Promise<TaskPackage> {
-    const taskPackages = await this.taskPackagesRepository.find({ id });
-    if (taskPackages.length !== 1)
+    const taskPackage = await this.taskPackagesRepository.findOne(
+      { id },
+      {
+        populate: [
+          'nearestTaskDeadline',
+          'tasks',
+          'organizations:ref',
+          'attachments.id',
+        ],
+      },
+    );
+    if (!taskPackage)
       throw new NotFoundException(`Not found task packages with id ${id}`);
 
-    return taskPackages[0];
+    return taskPackage as unknown as TaskPackage;
   }
 }

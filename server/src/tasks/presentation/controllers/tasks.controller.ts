@@ -25,7 +25,9 @@ import {
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import {
   FindPaginatedTasksQuery,
-  FindTaskExecutionQuery,
+  FindTaskExecutionByOrganizationQuery,
+  FindTaskExecutionHistoriesQuery,
+  FindTaskExecutionsQuery,
 } from '../../application/queries/tasks';
 import { FindTaskPackageQuery } from '../../application/queries/task-packages';
 import {
@@ -58,10 +60,8 @@ export class TasksController {
   @Get()
   @CheckPolicies(new ReadTaskPolicy())
   @ApiOperation({ summary: 'Retrieve all tasks of package' })
-  @ApiQuery({ name: 'additionalInformation', type: String, required: false })
-  @ApiQuery({ name: 'name', type: String, required: false })
+  @ApiQuery({ name: 'nameId', type: String, required: false })
   @ApiQuery({ name: 'number', type: String, required: false })
-  @ApiQuery({ name: 'description', type: String, required: false })
   @ApiQuery({
     name: 'dangerStatus',
     type: String,
@@ -74,10 +74,8 @@ export class TasksController {
     @Param('packageId') packageId: string,
     @Query('limit') limit?: number,
     @Query('offset') offset?: number,
-    @Query('additionalInformation') additionalInformation?: string,
     @Query('nameId') nameId?: string,
     @Query('number') number?: string,
-    @Query('description') description?: string,
     @Query('dangerStatus') dangerStatus?: TaskDangerStatus,
     @Query('categoryId') categoryId?: string,
   ): Promise<Paginated<Task[]>> {
@@ -85,10 +83,8 @@ export class TasksController {
       new FindPaginatedTasksQuery(
         packageId,
         {
-          additionalInformation,
           nameId,
           number,
-          description,
           dangerStatus,
           categoryId,
         },
@@ -105,6 +101,34 @@ export class TasksController {
     return this.queryBus.execute(new FindTaskPackageQuery(id));
   }
 
+  @Get(':id/organizations/:organizationId/execution')
+  @CheckPolicies(new ReadTaskPolicy())
+  @ApiOperation({ summary: 'Retrieve task executions' })
+  @ApiResponse({ status: HttpStatus.OK, type: TaskExecution })
+  public async findTaskExecutionsByOrganizations(
+    @Param('packageId') packageId: string,
+    @Param('id') id: string,
+    @Param('organizationId') organizationId?: string,
+  ): Promise<TaskExecution> {
+    return this.queryBus.execute(
+      new FindTaskExecutionByOrganizationQuery(packageId, id, organizationId),
+    );
+  }
+
+  @Get(':id/organizations/:organizationId/execution-histories')
+  @CheckPolicies(new ReadTaskPolicy())
+  @ApiOperation({ summary: 'Retrieve task executions' })
+  @ApiResponse({ status: HttpStatus.OK, type: TaskExecution })
+  public async findExecutionsHistories(
+    @Param('packageId') packageId: string,
+    @Param('id') id: string,
+    @Param('organizationId') organizationId: string,
+  ): Promise<TaskExecution> {
+    return this.queryBus.execute(
+      new FindTaskExecutionHistoriesQuery(packageId, id, organizationId),
+    );
+  }
+
   @Get(':id/executions')
   @CheckPolicies(new ReadTaskPolicy())
   @ApiOperation({ summary: 'Retrieve task executions' })
@@ -112,11 +136,8 @@ export class TasksController {
   public async findTaskExecutions(
     @Param('packageId') packageId: string,
     @Param('id') id: string,
-    @Query('organizationId') organizationId?: string,
   ): Promise<TaskExecution> {
-    return this.queryBus.execute(
-      new FindTaskExecutionQuery(packageId, id, organizationId),
-    );
+    return this.queryBus.execute(new FindTaskExecutionsQuery(packageId, id));
   }
 
   @Post()
@@ -131,7 +152,7 @@ export class TasksController {
     return this.commandBus.execute(new CreateTaskCommand(packageId, dto));
   }
 
-  @Post(':id/change-status')
+  @Post(':id/organization/:organizationId/change-status')
   @ApiOperation({ summary: 'Update task status' })
   @ApiResponse({ status: HttpStatus.OK, type: TaskExecution })
   @ApiBody({ type: ChangeTaskStatusDTO })
@@ -139,10 +160,11 @@ export class TasksController {
   public async updateTaskStatus(
     @Param('packageId') packageId: string,
     @Param('id') taskId: string,
+    @Param('organizationId') organizationId: string,
     @Body() dto: ChangeTaskStatusDTO,
   ): Promise<Task> {
     return this.commandBus.execute(
-      new ChangeTaskStatusCommand(packageId, taskId, dto),
+      new ChangeTaskStatusCommand(packageId, taskId, organizationId, dto),
     );
   }
 
@@ -156,9 +178,7 @@ export class TasksController {
     @Param('id') id: string,
     @Body() dto: UpdateTaskDTO,
   ): Promise<Task> {
-    return this.commandBus.execute(
-      new UpdateTaskCommand(packageId, { id, ...dto }),
-    );
+    return this.commandBus.execute(new UpdateTaskCommand(packageId, id, dto));
   }
 
   @Delete(':id')

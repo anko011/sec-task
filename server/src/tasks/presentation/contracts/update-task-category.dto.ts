@@ -6,7 +6,7 @@ export class UpdateTaskCategoryDTO {
   @IsNotEmpty()
   @IsString()
   @IsOptional()
-  readonly name?: string;
+  readonly title?: string;
 
   @ApiProperty()
   @IsNotEmpty()

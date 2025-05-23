@@ -4,11 +4,6 @@ import { TaskStatus } from '../../application/entities';
 
 export class ChangeTaskStatusDTO {
   @ApiProperty()
-  @IsNotEmpty()
-  @IsString()
-  readonly organizationId: string;
-
-  @ApiProperty()
   @IsNotEmpty({ message: 'Обязательное поле' })
   @IsString()
   readonly comment: string;

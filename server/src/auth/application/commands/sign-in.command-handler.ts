@@ -2,17 +2,19 @@ import { UnauthorizedException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { compare } from 'bcryptjs';
 
-import { UsersPort } from '../../../users/application/ports';
-
 import { AuthTokenPair } from '../entities';
 import { JwtServicePort, TokensStorePort } from '../ports';
 
 import { SignInCommand } from './sign-in.command';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { EntityRepository } from '@mikro-orm/better-sqlite';
+import { User } from '~/users/application/entities';
 
 @CommandHandler(SignInCommand)
 export class SignInCommandHandler implements ICommandHandler<SignInCommand> {
   public constructor(
-    private readonly usersPort: UsersPort,
+    @InjectRepository(User)
+    private readonly usersRepository: EntityRepository<User>,
     private readonly tokensPort: TokensStorePort,
     private readonly jwtServicePort: JwtServicePort,
   ) {}
@@ -21,15 +23,11 @@ export class SignInCommandHandler implements ICommandHandler<SignInCommand> {
     email,
     password,
   }: SignInCommand): Promise<AuthTokenPair> {
-    const users = await this.usersPort.find({ email });
+    const user = await this.usersRepository.findOne({ email });
+    if (!user) throw new UnauthorizedException('Credentials are invalid');
 
-    if (users.length !== 1)
-      throw new UnauthorizedException('Credentials are invalid');
-
-    const user = users[0];
-
-    if (!user || !(await compare(password, user.password)))
-      throw new UnauthorizedException('Credentials are invalid');
+    if (!(await compare(password, user.password)))
+      throw new UnauthorizedException('Credentials are invalid pass');
 
     const payload = {
       sub: user.id,

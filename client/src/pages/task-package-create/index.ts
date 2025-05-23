@@ -1,1 +1,1 @@
-export { CreateTaskPackagePage } from './task-package-create.ui';
+export { default as default } from '~/pages/task-package-create/task-package-create.ui';

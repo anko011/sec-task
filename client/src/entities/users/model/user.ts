@@ -1,21 +1,14 @@
-import type { Organization } from '~/entities/organizations';
+import type { z } from 'zod';
+
+import type { GetUserContract, GetUserWithOrganizationContract } from '../api/contracts';
 
 export enum Role {
     Admin = 'admin',
     Assigner = 'assigner',
-    Operator = 'operator'
+    Operator = 'operator',
+    Supervisor = 'supervisor'
 }
 
-export type User = {
-    id: string;
-    email: string;
-    firstName: string;
-    organizationId: string;
-    patronymic: string;
-    role: Role;
-    secondName: string;
-};
+export type User = z.infer<typeof GetUserContract>;
 
-export type UserWithOrganization = Omit<User, 'organizationId'> & {
-    organization: Organization;
-};
+export type UserWithOrganization = z.infer<typeof GetUserWithOrganizationContract>;

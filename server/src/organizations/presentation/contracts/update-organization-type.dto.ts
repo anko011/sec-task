@@ -6,5 +6,5 @@ export class UpdateOrganizationTypeDTO {
   @IsNotEmpty()
   @IsString()
   @IsOptional()
-  public readonly name?: string;
+  public readonly title?: string;
 }

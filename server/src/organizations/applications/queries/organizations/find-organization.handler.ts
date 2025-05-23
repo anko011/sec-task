@@ -1,7 +1,8 @@
-import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
+import { EntityRepository } from '@mikro-orm/better-sqlite';
 
-import { OrganizationsPort } from '../../ports';
 import { Organization } from '../../entities';
 
 import { FindOrganizationQuery } from './find-organization.query';
@@ -10,14 +11,17 @@ import { FindOrganizationQuery } from './find-organization.query';
 export class FindOrganizationQueryHandler
   implements IQueryHandler<FindOrganizationQuery>
 {
-  public constructor(private readonly organizationsPort: OrganizationsPort) {}
+  public constructor(
+    @InjectRepository(Organization)
+    private readonly organizationsRepository: EntityRepository<Organization>,
+  ) {}
 
   public async execute({ id }: FindOrganizationQuery): Promise<Organization> {
-    const matchedOrganizations = await this.organizationsPort.find({ id });
+    const organization = await this.organizationsRepository.findOne(id);
 
-    if (matchedOrganizations.length !== 1)
-      throw new NotFoundException(`Organization  ${id} not found`);
+    if (!organization)
+      throw new NotFoundException(`Organization with id ${id} not found`);
 
-    return matchedOrganizations[0];
+    return organization;
   }
 }

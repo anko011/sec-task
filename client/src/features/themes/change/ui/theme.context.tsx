@@ -1,19 +1,23 @@
 import { Theme } from '@radix-ui/themes';
-import type { ReactNode } from 'react';
-import { createContext, useContext, useState } from 'react';
+import { createContext, type ReactNode, useContext, useState } from 'react';
 
 type ThemeState = {
-    changeTheme(): void;
+    changeTheme: () => void;
     mode: 'light' | 'dark';
 };
 
 const ThemeContext = createContext<ThemeState | null>(null);
 
 export function ThemeProvider({ children }: { children?: ReactNode }) {
-    const [mode, setMode] = useState<'light' | 'dark'>('light');
+    const theme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    const [mode, setMode] = useState<'light' | 'dark'>(theme ?? 'light');
 
     const changeTheme = () => {
-        setMode((prev) => (prev === 'dark' ? 'light' : 'dark'));
+        setMode((prev) => {
+            const theme = prev === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('theme', theme);
+            return theme;
+        });
     };
 
     return (

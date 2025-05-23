@@ -1,20 +1,44 @@
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import {
+  EntityManager,
+  EntityRepository,
+  ForeignKeyConstraintViolationException,
+} from '@mikro-orm/better-sqlite';
+
+import { Organization } from '../../entities';
+
 import { DeleteOrganizationCommand } from './delete-organization.command';
-import { NotFoundException } from '@nestjs/common';
-import { OrganizationsPort } from '../../ports';
 
 @CommandHandler(DeleteOrganizationCommand)
 export class DeleteOrganizationCommandHandler
   implements ICommandHandler<DeleteOrganizationCommand>
 {
-  public constructor(private readonly organizationsPort: OrganizationsPort) {}
+  public constructor(
+    @InjectRepository(Organization)
+    private readonly organizationsRepository: EntityRepository<Organization>,
+    private readonly entityManager: EntityManager,
+  ) {}
 
   public async execute({ id }: DeleteOrganizationCommand): Promise<void> {
-    const organizations = await this.organizationsPort.find({ id });
+    const organization = await this.organizationsRepository.findOne({
+      id,
+    });
 
-    if (organizations.length !== 1)
-      throw new NotFoundException(`Organization with ${id} not found`);
+    if (!organization)
+      throw new NotFoundException(`Organization with id ${id} not found`);
 
-    await this.organizationsPort.delete(organizations[0]);
+    try {
+      await this.entityManager.removeAndFlush(organization);
+    } catch (e) {
+      if (e instanceof ForeignKeyConstraintViolationException) {
+        throw new ConflictException(
+          `Cannot delete the organization with id ${id} because it is referenced by other entities.`,
+        );
+      }
+
+      throw e;
+    }
   }
 }

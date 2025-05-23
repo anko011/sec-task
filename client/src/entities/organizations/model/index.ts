@@ -1,2 +1,2 @@
-export type { Organization } from './organization';
-export { useOrganizations } from './use-organizations.hook';
+export { useOrganizations, type OrganizationFilters } from './use-organizations';
+export { type Organization } from './organization';

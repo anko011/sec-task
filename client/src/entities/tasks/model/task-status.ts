@@ -1,0 +1,7 @@
+export enum TaskStatus {
+    COMPENSATED = 'COMPENSATED',
+    COMPLETED = 'COMPLETED',
+    IN_PROGRESS = 'IN_PROGRESS',
+    NEW = 'NEW',
+    NO_ACTUAL = 'NO_ACTUAL'
+}

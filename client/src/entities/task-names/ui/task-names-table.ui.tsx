@@ -1,40 +1,39 @@
-import { Table, Text } from '@radix-ui/themes';
 import type { ReactNode } from 'react';
+import { Table, Text } from '@radix-ui/themes';
 
-import type { TaskName } from '../model';
+import type { TaskName } from '../model/task-name';
 
 export type TaskNamesTableProps = Table.RootProps & {
-    actionEnd?: {
-        title: string;
-        action: (name: TaskName) => ReactNode;
-    };
-    actionStart?: {
-        title: string;
-        action: (name: TaskName) => ReactNode;
-    };
+    actionEndTitle?: ReactNode;
+    actionEnd?: (name: TaskName) => ReactNode;
+    actionStartTitle?: ReactNode;
+    actionStart?: (name: TaskName) => ReactNode;
     data: TaskName[];
 };
 
-export function TaskNamesTable({ actionEnd, actionStart, data, ...props }: TaskNamesTableProps) {
+export function TaskNamesTable({
+    actionStartTitle,
+    actionStart,
+    actionEndTitle,
+    actionEnd,
+    data,
+    ...props
+}: TaskNamesTableProps) {
     return (
         <Table.Root {...props}>
             <Table.Header>
                 <Table.Row>
-                    {actionStart != null && (
-                        <Table.ColumnHeaderCell width="72px">{actionStart.title}</Table.ColumnHeaderCell>
-                    )}
+                    {!!actionStart && <Table.ColumnHeaderCell width="72px">{actionStartTitle}</Table.ColumnHeaderCell>}
                     <Table.ColumnHeaderCell>Название</Table.ColumnHeaderCell>
-                    {actionEnd != null && (
-                        <Table.ColumnHeaderCell width="72px">{actionEnd.title}</Table.ColumnHeaderCell>
-                    )}
+                    {!!actionEnd && <Table.ColumnHeaderCell width="72px">{actionEndTitle}</Table.ColumnHeaderCell>}
                 </Table.Row>
             </Table.Header>
             <Table.Body>
                 {data.map((taskName) => (
                     <Table.Row key={taskName.id}>
-                        {actionStart != null && <Table.Cell>{actionStart.action(taskName)}</Table.Cell>}
-                        <Table.Cell>{taskName.name}</Table.Cell>
-                        {actionEnd != null && <Table.Cell>{actionEnd.action(taskName)}</Table.Cell>}
+                        {!!actionStart && <Table.Cell>{actionStart(taskName)}</Table.Cell>}
+                        <Table.Cell>{taskName.title}</Table.Cell>
+                        {!!actionEnd && <Table.Cell>{actionEnd(taskName)}</Table.Cell>}
                     </Table.Row>
                 ))}
                 {data.length === 0 && (

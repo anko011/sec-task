@@ -1,24 +1,8 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { Entity, Property } from '@mikro-orm/core';
+import { BaseEntity } from '~/common/entities';
 
-export class OrganizationType {
-  @ApiProperty()
-  public readonly id: string;
-
-  constructor(
-    id: string,
-    private _name: string,
-  ) {
-    this.id = id;
-  }
-
-  set name(name: string) {
-    this._name = name;
-  }
-
-  @ApiProperty()
-  @Expose()
-  get name() {
-    return this._name;
-  }
+@Entity()
+export class OrganizationType extends BaseEntity {
+  @Property()
+  title: string;
 }

@@ -48,17 +48,17 @@ export class TaskCategoriesController {
   @Get()
   @CheckPolicies(new ReadTaskPolicy())
   @ApiOperation({ summary: 'Retrieve all tasks categories' })
-  @ApiQuery({ name: 'name', type: String, required: false })
+  @ApiQuery({ name: 'title', type: String, required: false })
   @ApiQuery({ name: 'color', type: String, required: false })
   @ApiPaginatedResponse(TaskCategory)
   public async findTaskCategories(
     @Query('limit') limit?: number,
     @Query('offset') offset?: number,
-    @Query('name') name?: string,
+    @Query('title') title?: string,
     @Query('color') color?: string,
   ): Promise<Paginated<TaskCategory[]>> {
     return this.queryBus.execute(
-      new FindPaginatedTaskCategoriesQuery({ name, color }, { limit, offset }),
+      new FindPaginatedTaskCategoriesQuery({ title, color }, { limit, offset }),
     );
   }
 
@@ -80,7 +80,7 @@ export class TaskCategoriesController {
   public async createTaskCategory(
     @Body() dto: CreateTaskCategoryDTO,
   ): Promise<TaskCategory> {
-    return this.commandBus.execute(new CreateTaskCategoryCommand(dto));
+    return await this.commandBus.execute(new CreateTaskCategoryCommand(dto));
   }
 
   @Patch(':id')
@@ -92,9 +92,7 @@ export class TaskCategoriesController {
     @Param('id') id: string,
     @Body() dto: UpdateTaskCategoryDTO,
   ): Promise<TaskCategory> {
-    return this.commandBus.execute(
-      new UpdateTaskCategoryCommand({ id, ...dto }),
-    );
+    return this.commandBus.execute(new UpdateTaskCategoryCommand(id, dto));
   }
 
   @Delete(':id')

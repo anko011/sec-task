@@ -53,14 +53,14 @@ export class OrganizationTypesController {
   @CheckPolicies(new ReadOrganizationTypePolicy())
   @ApiOperation({ summary: 'Retrieve all organization types' })
   @ApiPaginatedResponse(OrganizationType)
-  @ApiQuery({ name: 'name', type: String, required: false, default: '' })
+  @ApiQuery({ name: 'title', type: String, required: false, default: '' })
   public async findOrganizationTypes(
     @Query('limit') limit?: number,
     @Query('offset') offset?: number,
-    @Query('name') name?: string,
+    @Query('title') title?: string,
   ): Promise<Paginated<OrganizationType[]>> {
     return this.queryBus.execute<FindPaginatedOrganizationTypesQuery>(
-      new FindPaginatedOrganizationTypesQuery({ name }, { limit, offset }),
+      new FindPaginatedOrganizationTypesQuery({ title }, { limit, offset }),
     );
   }
 
@@ -96,9 +96,7 @@ export class OrganizationTypesController {
     @Param('id') id: string,
     @Body() dto: UpdateOrganizationTypeDTO,
   ): Promise<TaskPackage> {
-    return this.commandBus.execute(
-      new UpdateOrganizationTypeCommand({ id, ...dto }),
-    );
+    return this.commandBus.execute(new UpdateOrganizationTypeCommand(id, dto));
   }
 
   @Delete(':id')

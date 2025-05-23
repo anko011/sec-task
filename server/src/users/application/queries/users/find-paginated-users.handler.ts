@@ -1,25 +1,34 @@
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { EntityRepository } from '@mikro-orm/better-sqlite';
+import { deepCleanObject } from '~/common/utils';
 
 import { Paginated } from '../../../../common/queries';
 
 import { FindPaginatedUsersQuery } from './find-paginated-users.query';
-import { UsersPort } from '../../ports';
 import { User } from '../../entities';
 
 @QueryHandler(FindPaginatedUsersQuery)
 export class FindPaginatedUsersQueryHandler
   implements IQueryHandler<FindPaginatedUsersQuery>
 {
-  public constructor(private readonly usersPort: UsersPort) {}
+  public constructor(
+    @InjectRepository(User)
+    private readonly usersRepository: EntityRepository<User>,
+  ) {}
 
   public async execute({
     where,
     options,
   }: FindPaginatedUsersQuery): Promise<Paginated<User[]>> {
-    const [items, total] = await Promise.all([
-      this.usersPort.find(where, options),
-      this.usersPort.count(where),
-    ]);
+    const [items, total] = await this.usersRepository.findAndCount(
+      deepCleanObject({
+        ...where,
+        organizationId: null,
+        organization: where?.organizationId,
+      }),
+      options,
+    );
 
     return {
       items,

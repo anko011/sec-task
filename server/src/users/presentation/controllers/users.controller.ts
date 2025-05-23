@@ -99,7 +99,7 @@ export class UsersController {
     @Param('id') id: string,
     @Body() dto: UpdateUserDTO,
   ): Promise<User> {
-    return this.commandBus.execute(new UpdateUserCommand({ id, ...dto }));
+    return this.commandBus.execute(new UpdateUserCommand(id, dto));
   }
 
   @Delete(':id')

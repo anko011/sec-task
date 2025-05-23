@@ -1,7 +1,9 @@
+import { NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { BadRequestException } from '@nestjs/common';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { EntityManager, EntityRepository } from '@mikro-orm/better-sqlite';
 
-import { TaskPackagesPort } from '../../ports';
+import { TaskPackage } from '../../entities';
 
 import { ChangeTaskStatusCommand } from './change-task-status.command';
 
@@ -9,25 +11,33 @@ import { ChangeTaskStatusCommand } from './change-task-status.command';
 export class ChangeTaskStatusCommandHandler
   implements ICommandHandler<ChangeTaskStatusCommand>
 {
-  constructor(private readonly taskPackagesPort: TaskPackagesPort) {}
+  constructor(
+    @InjectRepository(TaskPackage)
+    private readonly taskPackagesRepository: EntityRepository<TaskPackage>,
+    private readonly entityManager: EntityManager,
+  ) {}
 
-  async execute({ packageId, taskId, dto }: ChangeTaskStatusCommand) {
-    const taskPackages = await this.taskPackagesPort.find({ id: packageId });
-    if (taskPackages.length !== 1)
-      throw new BadRequestException(
-        `Not fount task package with id ${packageId}`,
+  async execute({
+    packageId,
+    taskId,
+    organizationId,
+    dto,
+  }: ChangeTaskStatusCommand) {
+    const taskPackage = await this.taskPackagesRepository.findOne(packageId, {
+      populate: ['tasks.executions.statusHistories'],
+    });
+    if (!taskPackage)
+      throw new NotFoundException(
+        `Task package with id ${packageId} not found`,
       );
 
-    const taskPackage = taskPackages[0];
-
-    const execution = taskPackage.changeTaskStatus(
+    taskPackage.updateTaskStatus(
+      organizationId,
       taskId,
-      dto.organizationId,
       dto.status,
       dto.comment,
     );
 
-    await this.taskPackagesPort.save(taskPackage);
-    return execution;
+    await this.entityManager.persistAndFlush(taskPackage);
   }
 }

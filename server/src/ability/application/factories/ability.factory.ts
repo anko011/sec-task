@@ -16,6 +16,7 @@ export enum Action {
   Read = 'read',
   Update = 'update',
   Delete = 'delete',
+  Fix = 'fix',
 }
 
 type Subjects =
@@ -30,7 +31,9 @@ export type AppAbility = MongoAbility<[Action, Subjects]>;
 @Injectable()
 export class AbilityFactory {
   createForUser(user: User) {
-    const { can, build } = new AbilityBuilder<AppAbility>(createMongoAbility);
+    const { can, build, cannot } = new AbilityBuilder<AppAbility>(
+      createMongoAbility,
+    );
 
     can(Action.Read, 'all');
 
@@ -42,9 +45,14 @@ export class AbilityFactory {
       can(Action.Update, Task);
     }
 
-    if (user.role === Role.Operator) {
+    if (user.role === Role.Operator || user.role === Role.Supervisor) {
       can(Action.Manage, Task);
       can(Action.Manage, TaskPackage);
+      cannot(Action.Fix, TaskPackage);
+    }
+
+    if (user.role === Role.Supervisor) {
+      can(Action.Fix, TaskPackage);
     }
 
     return build({

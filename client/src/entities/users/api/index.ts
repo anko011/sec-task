@@ -1,1 +1,8 @@
-export { createUser, deleteUser, findAllUsers, findAllUsersWithOrganization, updateUser } from './repository';
+export {
+    GetUserContract,
+    GetPaginatedUsersContract,
+    GetUserWithOrganizationContract,
+    GetPaginatedUsersWithOrganizationContract,
+    CreateUserContract,
+    EditUserContract
+} from './contracts';

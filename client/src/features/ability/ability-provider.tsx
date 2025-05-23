@@ -7,13 +7,13 @@ import { createContext, use, useEffect, useState } from 'react';
 import type { User } from '~/entities/users';
 import { Role, useCurrentUser } from '~/entities/users';
 
-export type Actions = 'manage' | 'create' | 'read' | 'update' | 'delete';
+export type Actions = 'manage' | 'create' | 'read' | 'update' | 'delete' | 'fix';
 export type Subjects = 'User' | 'TaskPackage' | 'Organization' | 'all';
 
 export type AppAbility = MongoAbility<[Actions, Subjects]>;
 
 export const createAbility = (user: User | null): AppAbility => {
-    const { build, can } = new AbilityBuilder<AppAbility>(createMongoAbility);
+    const { build, can, cannot } = new AbilityBuilder<AppAbility>(createMongoAbility);
 
     if (user == null) return build();
 
@@ -25,8 +25,14 @@ export const createAbility = (user: User | null): AppAbility => {
         can('read', 'TaskPackage');
     }
 
-    if (user.role === Role.Operator) {
+    if (user.role === Role.Operator || user.role === Role.Supervisor) {
         can('manage', 'TaskPackage');
+        cannot('fix', 'TaskPackage');
+        can('read', 'Organization');
+    }
+
+    if (user.role === Role.Supervisor) {
+        can('fix', 'TaskPackage');
     }
 
     return build({

@@ -1,4 +1,8 @@
-export { PaginatedTaskPackagesTable, type PaginatedTaskPackagesTableProps } from './paginated-task-packages-table.ui';
-export { TaskPackageForm } from './task-package-form.ui';
-export { TaskPackageInfoList, type TaskPackageInfoListProps } from './task-package-info-list.ui';
-export type { TaskPackagesTableProps } from './task-packages-table.ui';
+export { TaskPackageDataTable, type TaskPackageDataTableProps } from './task-package-table.ui';
+export {
+    TaskPackageForm,
+    type TaskPackageFormValues,
+    type TaskPackageFormProps,
+    type TaskPackageFormErrors
+} from './task-package-form.ui';
+export { TaskPackageView, TaskPackageViewContext } from './task-package-view.ui';

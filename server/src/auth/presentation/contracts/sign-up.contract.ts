@@ -1,5 +1,7 @@
-import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsExistingId } from '~/common/validators';
+import { Organization } from '~/organizations/applications/entities';
 
 export class SignUpDTO {
   @ApiProperty()
@@ -30,5 +32,7 @@ export class SignUpDTO {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
+  @IsExistingId(Organization)
+  @IsOptional()
   public readonly organizationId: string;
 }

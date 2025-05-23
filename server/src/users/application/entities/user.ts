@@ -1,54 +1,67 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
+import { BaseEntity } from '~/common/entities';
+import { Entity, Enum, ManyToOne, Property, Reference } from '@mikro-orm/core';
+import { Organization } from '~/organizations/applications/entities';
 
 export enum Role {
   Admin = 'admin',
   Operator = 'operator',
   Assigner = 'assigner',
+  Supervisor = 'supervisor',
 }
 
-export class User {
+@Entity()
+export class User extends BaseEntity {
   @ApiProperty()
-  public id: string;
+  @Property()
+  firstName: string;
 
   @ApiProperty()
-  public firstName: string;
+  @Property()
+  secondName: string;
 
   @ApiProperty()
-  public secondName: string;
+  @Property()
+  patronymic: string;
 
   @ApiProperty()
-  public patronymic: string;
+  @Property()
+  email: string;
 
   @ApiProperty()
-  public email: string;
+  @Enum(() => Role)
+  role: Role;
 
   @ApiProperty()
-  public role: Role;
-
-  @ApiProperty()
-  organizationId: string;
+  @ManyToOne(() => Organization, { nullable: true })
+  organization: Organization;
 
   @Exclude()
-  public readonly password: string;
+  @Property()
+  readonly password: string;
 
   constructor(
-    id: string,
     firstName: string,
     secondName: string,
     patronymic: string,
     email: string,
     role: Role,
     password: string,
-    organizationId: string,
+    organizationId?: string | null,
   ) {
-    this.id = id;
+    super();
     this.firstName = firstName;
     this.secondName = secondName;
     this.patronymic = patronymic;
     this.email = email;
     this.role = role;
     this.password = password;
-    this.organizationId = organizationId;
+    if (organizationId) {
+      this.organization = Reference.createNakedFromPK(
+        Organization,
+        organizationId,
+      );
+    }
   }
 }

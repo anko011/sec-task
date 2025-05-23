@@ -1,28 +1,4 @@
-import type { Task } from '~/entities/tasks';
+import type { z } from 'zod';
+import type { GetTaskPackageContract } from '../api/contracts';
 
-export enum TaskPackageStatus {
-    ACTIVE = 'ACTIVE',
-    FIXED = 'FIXED'
-}
-
-export type BaseDocument = {
-    name: string;
-    url: string;
-};
-
-export type TaskPackage = {
-    id: string;
-    assignedOrganizationCount: number;
-    assignedOrganizationIds: string[];
-    createdAt: Date;
-    incomingRequisite: string;
-    outgoingRequisite: string;
-    reportDeadline: {
-        deadline: Date;
-        needsPostpone: boolean;
-    };
-    status: TaskPackageStatus;
-    submissionData: Date;
-    tasks: Task[];
-    tasksCount: number;
-};
+export type TaskPackage = z.infer<typeof GetTaskPackageContract>;

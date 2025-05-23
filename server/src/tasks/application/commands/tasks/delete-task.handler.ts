@@ -1,27 +1,51 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import {
+  EntityManager,
+  EntityRepository,
+  ForeignKeyConstraintViolationException,
+} from '@mikro-orm/better-sqlite';
 
-import { TaskPackagesPort } from '../../ports';
+import { TaskPackage } from '../../entities';
 
 import { DeleteTaskCommand } from './delete-task.command';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 
 @CommandHandler(DeleteTaskCommand)
 export class DeleteTaskCommandHandler
   implements ICommandHandler<DeleteTaskCommand>
 {
-  public constructor(private readonly taskPackagesPort: TaskPackagesPort) {}
+  public constructor(
+    @InjectRepository(TaskPackage)
+    private readonly taskPackagesRepository: EntityRepository<TaskPackage>,
+    private readonly entityManager: EntityManager,
+  ) {}
 
   public async execute({ packageId, id }: DeleteTaskCommand): Promise<void> {
-    const taskPackages = await this.taskPackagesPort.find({
-      id: packageId,
-    });
+    const taskPackage = await this.taskPackagesRepository.findOne(
+      {
+        id: packageId,
+      },
+      { populate: ['*'] },
+    );
 
-    if (taskPackages.length !== 1)
-      throw new NotFoundException(`TaskPackage ${id} not found`);
+    if (!taskPackage)
+      throw new NotFoundException(
+        `Task package with id ${id} not found inside task package with id ${packageId}`,
+      );
 
-    const taskPackage = taskPackages[0];
     taskPackage.removeTask(id);
 
-    await this.taskPackagesPort.save(taskPackage);
+    try {
+      await this.entityManager.persistAndFlush(taskPackage);
+    } catch (e) {
+      if (e instanceof ForeignKeyConstraintViolationException) {
+        throw new ConflictException(
+          `Cannot delete the task  with id ${id} because it is referenced by other entities.`,
+        );
+      }
+
+      throw e;
+    }
   }
 }

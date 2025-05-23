@@ -2,8 +2,6 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
-import { UsersModule } from '../users/users.module';
-
 import { handlers as authCommandHandlers } from './application/commands';
 import { handlers as authQueryHandlers } from './application/queries/users';
 
@@ -16,15 +14,16 @@ import {
   JwtServiceAdapter,
 } from './infrastructure/adapters';
 import { CacheModule } from '@nestjs/cache-manager';
-import { OrganizationsModule } from '../organizations/organizations.module';
 import { MutexStoreService } from './infrastructure/adapters/mutext-store.adapter';
+import { User } from '~/users/application/entities';
+import { Organization } from '~/organizations/applications/entities';
+import { MikroOrmModule } from '@mikro-orm/nestjs';
 
 @Module({
   imports: [
-    CacheModule.register(),
     ConfigModule,
-    OrganizationsModule,
-    UsersModule,
+    CacheModule.register(),
+    MikroOrmModule.forFeature([User, Organization]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

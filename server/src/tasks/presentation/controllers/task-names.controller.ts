@@ -48,15 +48,15 @@ export class TaskNamesController {
   @Get()
   @CheckPolicies(new ReadTaskPolicy())
   @ApiOperation({ summary: 'Retrieve all tasks names' })
-  @ApiQuery({ name: 'name', type: String, required: false })
+  @ApiQuery({ name: 'title', type: String, required: false })
   @ApiPaginatedResponse(TaskName)
   public async findTaskNames(
     @Query('limit') limit?: number,
     @Query('offset') offset?: number,
-    @Query('name') name?: string,
+    @Query('title') title?: string,
   ): Promise<Paginated<TaskName[]>> {
     return this.queryBus.execute(
-      new FindPaginatedTaskNamesQuery({ name }, { limit, offset }),
+      new FindPaginatedTaskNamesQuery({ title }, { limit, offset }),
     );
   }
 
@@ -88,7 +88,7 @@ export class TaskNamesController {
     @Param('id') id: string,
     @Body() dto: UpdateTaskNameDTO,
   ): Promise<TaskName> {
-    return this.commandBus.execute(new UpdateTaskNameCommand({ id, ...dto }));
+    return this.commandBus.execute(new UpdateTaskNameCommand(id, dto));
   }
 
   @Delete(':id')

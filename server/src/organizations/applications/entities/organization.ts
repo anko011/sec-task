@@ -1,35 +1,38 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import {
+  Cascade,
+  Collection,
+  Entity,
+  ManyToMany,
+  ManyToOne,
+  Property,
+} from '@mikro-orm/core';
+
+import { BaseEntity } from '~/common/entities';
+import { TaskPackage } from '~/tasks/application/entities';
+
 import { OrganizationType } from './organization-type';
 
-export class Organization {
+@Entity()
+export class Organization extends BaseEntity {
   @ApiProperty()
-  public readonly id: string;
-
-  @ApiProperty()
-  public type: OrganizationType;
-
-  @ApiProperty()
-  public isArchived: boolean;
-
-  constructor(
-    id: string,
-    type: OrganizationType,
-    private _name: string,
-    isArchived: boolean,
-  ) {
-    this.id = id;
-    this.type = type;
-    this.isArchived = isArchived;
-  }
+  @Property()
+  name: string;
 
   @ApiProperty()
-  @Expose()
-  public get name() {
-    return this._name;
-  }
+  @ManyToOne(() => OrganizationType, {
+    eager: true,
+    deleteRule: 'cascade',
+  })
+  type: OrganizationType;
 
-  public set name(value: string) {
-    this._name = value;
-  }
+  @ApiProperty()
+  @Property()
+  isArchived: boolean;
+
+  @ManyToMany(() => TaskPackage, (taskPackage) => taskPackage.organizations, {
+    cascade: [Cascade.ALL],
+    deleteRule: 'cascade',
+  })
+  packages: Collection<TaskPackage> = new Collection<TaskPackage>(this);
 }

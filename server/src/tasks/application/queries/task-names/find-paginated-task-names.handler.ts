@@ -1,25 +1,28 @@
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import { Paginated } from '../../../../common/queries';
-
-import { TaskNamesPort } from '../../ports';
+import { Paginated, prepareSearchConditions } from '../../../../common/queries';
 import { TaskName } from '../../entities';
 
 import { FindPaginatedTaskNamesQuery } from './find-paginated-task-names.query';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { EntityRepository } from '@mikro-orm/better-sqlite';
 
 @QueryHandler(FindPaginatedTaskNamesQuery)
 export class FindPaginatedTaskNamesHandler
   implements IQueryHandler<FindPaginatedTaskNamesQuery>
 {
-  constructor(private readonly taskNamesPort: TaskNamesPort) {}
+  constructor(
+    @InjectRepository(TaskName)
+    private readonly taskNamesRepository: EntityRepository<TaskName>,
+  ) {}
 
   async execute({
     where,
     options,
   }: FindPaginatedTaskNamesQuery): Promise<Paginated<TaskName[]>> {
-    const [items, total] = await Promise.all([
-      this.taskNamesPort.find(where, options),
-      this.taskNamesPort.count(where),
-    ]);
+    const [items, total] = await this.taskNamesRepository.findAndCount(
+      prepareSearchConditions({ ...where }),
+      options,
+    );
 
     return {
       items,

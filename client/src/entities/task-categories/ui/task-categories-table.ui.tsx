@@ -1,45 +1,56 @@
-import { Table } from '@radix-ui/themes';
 import type { ReactNode } from 'react';
+import { Table, Text } from '@radix-ui/themes';
 
 import type { TaskCategory } from '../model/task-category';
+import { ColorView } from '~/shared/ui/color-picker';
 
 export type TaskCategoriesTableProps = Table.RootProps & {
-    actionEnd?: {
-        title: string;
-        action: (category: TaskCategory) => ReactNode;
-    };
-    actionStart?: {
-        title: string;
-        action: (category: TaskCategory) => ReactNode;
-    };
+    actionEndTitle?: ReactNode;
+    actionEnd?: (category: TaskCategory) => ReactNode;
+    actionStartTitle?: ReactNode;
+    actionStart?: (category: TaskCategory) => ReactNode;
     data: TaskCategory[];
 };
 
-export function TaskCategoriesTable({ actionEnd, actionStart, data, ...props }: TaskCategoriesTableProps): ReactNode {
+export function TaskCategoriesTable({
+    actionStartTitle,
+    actionStart,
+    actionEndTitle,
+    actionEnd,
+    data,
+    ...props
+}: TaskCategoriesTableProps): ReactNode {
     return (
         <Table.Root {...props}>
             <Table.Header>
                 <Table.Row>
-                    {actionStart != null && (
-                        <Table.ColumnHeaderCell width="72px">{actionStart.title}</Table.ColumnHeaderCell>
+                    {!!actionStartTitle && (
+                        <Table.ColumnHeaderCell width="72px">{actionStartTitle}</Table.ColumnHeaderCell>
                     )}
                     <Table.ColumnHeaderCell>Название</Table.ColumnHeaderCell>
                     <Table.ColumnHeaderCell>Цвет</Table.ColumnHeaderCell>
-                    {actionEnd != null && (
-                        <Table.ColumnHeaderCell width="72px">{actionEnd.title}</Table.ColumnHeaderCell>
-                    )}
+                    {!!actionEndTitle && <Table.ColumnHeaderCell width="72px">{actionEndTitle}</Table.ColumnHeaderCell>}
                 </Table.Row>
             </Table.Header>
 
             <Table.Body>
                 {data.map((category) => (
                     <Table.Row key={category.id}>
-                        {actionStart != null && <Table.Cell>{actionStart.action(category)}</Table.Cell>}
-                        <Table.RowHeaderCell>{category.name}</Table.RowHeaderCell>
-                        <Table.Cell>{category.color}</Table.Cell>
-                        {actionEnd != null && <Table.Cell>{actionEnd.action(category)}</Table.Cell>}
+                        {!!actionStart && <Table.Cell>{actionStart(category)}</Table.Cell>}
+                        <Table.RowHeaderCell>{category.title}</Table.RowHeaderCell>
+                        <Table.Cell>
+                            <ColorView color={category.color} />
+                        </Table.Cell>
+                        {!!actionEnd && <Table.Cell>{actionEnd(category)}</Table.Cell>}
                     </Table.Row>
                 ))}
+                {!data.length && (
+                    <Table.Row>
+                        <Table.Cell colSpan={4}>
+                            <Text>Отсутствуют элементы</Text>
+                        </Table.Cell>
+                    </Table.Row>
+                )}
             </Table.Body>
         </Table.Root>
     );

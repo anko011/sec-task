@@ -1,61 +1,110 @@
-import { Flex, TextField } from '@radix-ui/themes';
-import type { ReactNode } from 'react';
-import { useActionState } from 'react';
+import { Flex } from '@radix-ui/themes';
+import { type ReactNode, useActionState, useState } from 'react';
 
-import type { UserWithOrganization } from '~/entities/users';
-import { type User, UserRolesSelector } from '~/entities/users';
-import { FilterOrganizationSelector } from '~/features/organizations/filter';
+import { OrganizationsSelector } from '~/entities/organizations';
+
+import { ClearableTextField } from '~/shared/ui/clearable-text-field';
 import { FormField } from '~/shared/ui/form-field';
 
-export type UserFormState = { isSuccess: boolean } & Partial<
-    Omit<User, 'id' | 'role'> & {
-        organizationId: string;
-        password: string;
-        role: string;
-    }
->;
+import { Role, type User, type UserWithOrganization } from '../model/user';
+import { UserRolesSelector } from './user-roles-selector.ui';
 
-type UserFormProps = {
-    action: (prevState: UserFormState, formData: FormData) => Promise<UserFormState>;
+export type UserFormValues = {
+    firstName?: string;
+    secondName?: string;
+    patronymic?: string;
+    email?: string;
+    password?: string;
+    role?: Role;
+    organizationId?: string;
+};
+
+export type UserFormErrors = {
+    firstName?: string;
+    secondName?: string;
+    patronymic?: string;
+    email?: string;
+    password?: string;
+    organizationId?: string;
+    role?: string;
+};
+
+export type UserFormProps = {
+    action?: (values: UserFormValues) => Promise<UserFormErrors> | UserFormErrors;
     end?: ReactNode;
     user?: User | UserWithOrganization;
 };
 
 export function UserForm({ action, end, user }: UserFormProps) {
-    const [state, dispatch] = useActionState(action, { isSuccess: true });
-    const organizationId = user != null && 'organization' in user ? user.organization.id : user?.organizationId;
+    const [role, setRole] = useState<Role | undefined>(user?.role);
+
+    const organizationId = !!user
+        ? typeof user.organization === 'string'
+            ? user.organization
+            : user.organization?.id
+        : undefined;
+
+    const submit = async (errors: UserFormErrors, formData?: FormData): Promise<UserFormErrors> => {
+        if (!action) return errors;
+        return action({
+            firstName: formData?.get('firstName') as string,
+            secondName: formData?.get('secondName') as string,
+            patronymic: formData?.get('patronymic') as string,
+            email: formData?.get('email') as string,
+            password: formData?.get('password') as string,
+            organizationId: formData?.get('organizationId') as string,
+            role
+        });
+    };
+    const [errors, dispatch] = useActionState(submit, {});
 
     return (
         <Flex asChild direction="column" gap="2">
             <form action={dispatch}>
                 <Flex gap="2">
-                    <FormField error={state.firstName} label="Имя">
-                        <TextField.Root defaultValue={user?.firstName} name="firstName" placeholder="Иван" />
+                    <FormField error={errors?.firstName} label="Имя">
+                        <ClearableTextField defaultValue={user?.firstName} name="firstName" placeholder="Введите имя" />
                     </FormField>
-                    <FormField error={state.secondName} label="Фамилия">
-                        <TextField.Root defaultValue={user?.secondName} name="secondName" placeholder="Иванов" />
+                    <FormField error={errors?.secondName} label="Фамилия">
+                        <ClearableTextField
+                            defaultValue={user?.secondName}
+                            name="secondName"
+                            placeholder="Введите фамилию"
+                        />
                     </FormField>
-                    <FormField error={state.patronymic} label="Отчество">
-                        <TextField.Root defaultValue={user?.patronymic} name="patronymic" placeholder="Иванович" />
+                    <FormField error={errors?.patronymic} label="Отчество">
+                        <ClearableTextField
+                            defaultValue={user?.patronymic}
+                            name="patronymic"
+                            placeholder="Введите отчество"
+                        />
                     </FormField>
                 </Flex>
 
                 <Flex gap="2">
-                    <FormField error={state.email} label="Email">
-                        <TextField.Root defaultValue={user?.email} name="email" placeholder="name@mail.ru" />
+                    <FormField error={errors?.email} label="Email">
+                        <ClearableTextField
+                            defaultValue={user?.email}
+                            name="email"
+                            placeholder="Введите email"
+                            type="email"
+                        />
                     </FormField>
-                    <FormField error={state.organizationId} label="Организация">
-                        <FilterOrganizationSelector defaultValue={organizationId} name="organizationId" />
+
+                    <FormField error={errors?.password} label="Пароль">
+                        <ClearableTextField name="password" type="password" />
                     </FormField>
                 </Flex>
 
-                <FormField error={state.role} label="Роль">
-                    <UserRolesSelector defaultValue={user?.role} name="role" />
+                <FormField error={errors?.role} label="Роль">
+                    <UserRolesSelector value={role} onChange={setRole} name="role" />
                 </FormField>
 
-                <FormField error={state.password} label="Пароль">
-                    <TextField.Root name="password" type="password" />
-                </FormField>
+                {!!role && role === Role.Assigner && (
+                    <FormField error={errors.organizationId} label="Организация">
+                        <OrganizationsSelector defaultValue={organizationId} name="organizationId" />
+                    </FormField>
+                )}
 
                 {end}
             </form>

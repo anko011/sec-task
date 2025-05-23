@@ -1,60 +1,42 @@
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 
-import { Paginated } from '../../../../common/queries';
-import { UsersPort } from '../../ports';
-import { UserWithOrganization } from './dtos/user-with-organization.dto';
-import { OrganizationsPort } from '../../../../organizations/applications/ports';
-import { InternalServerErrorException } from '@nestjs/common';
+import { Paginated, prepareSearchConditions } from '../../../../common/queries';
 import { FindPaginatedUsersWithOrganizationQuery } from './find-paginated-users-with-organization.query';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { User } from '~/users/application/entities';
+import { EntityRepository } from '@mikro-orm/better-sqlite';
 
 @QueryHandler(FindPaginatedUsersWithOrganizationQuery)
 export class FindPaginatedUsersWithOrganizationQueryHandler
   implements IQueryHandler<FindPaginatedUsersWithOrganizationQuery>
 {
   public constructor(
-    private readonly usersPort: UsersPort,
-    private readonly organizationsPort: OrganizationsPort,
+    @InjectRepository(User)
+    private readonly usersRepository: EntityRepository<User>,
   ) {}
 
   public async execute({
     where,
     options,
-  }: FindPaginatedUsersWithOrganizationQuery): Promise<
-    Paginated<UserWithOrganization[]>
-  > {
-    const [items, total] = await Promise.all([
-      this.usersPort.find(where, options),
-      this.usersPort.count(where),
-    ]);
-
-    const organizationIds = items.map(({ organizationId }) => organizationId);
-    const organizations = await this.organizationsPort.find({
-      id: { $in: organizationIds },
+  }: FindPaginatedUsersWithOrganizationQuery): Promise<Paginated<User[]>> {
+    const conditions = prepareSearchConditions({
+      ...where,
+      organizationName: null,
+      organization:
+        where?.organizationName && where.organizationName !== ''
+          ? {
+              name: where?.organizationName,
+            }
+          : null,
     });
 
-    const usersWithOrganizations = items
-      .map((user) => {
-        const organization = organizations.find(
-          ({ id }) => id === user.organizationId,
-        );
-
-        if (!organization)
-          throw new InternalServerErrorException(
-            'Property organizationId of user not collisions with organization',
-          );
-
-        return new UserWithOrganization(user, organization);
-      })
-      .filter((user) => {
-        if (!where?.organizationName) return true;
-        return user.organization.name
-          .toLowerCase()
-          .trim()
-          .includes(where.organizationName.toLowerCase().trim());
-      });
+    const [items, total] = await this.usersRepository.findAndCount(conditions, {
+      ...options,
+      populate: ['organization'],
+    });
 
     return {
-      items: usersWithOrganizations,
+      items,
       total,
       limit: options?.limit ?? 10,
       offset: options?.offset ?? 0,

@@ -3,6 +3,7 @@ export {
   DeleteTaskPackagePolicy,
   CreateTaskPackagePolicy,
   UpdateTaskPackagePolicy,
+  FixTaskPackagePolicy,
 } from './task-packages.polices';
 
 export {

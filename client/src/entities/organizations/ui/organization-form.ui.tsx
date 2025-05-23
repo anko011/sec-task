@@ -5,37 +5,50 @@ import { useActionState } from 'react';
 import { OrganizationTypesSelector } from '~/entities/organization-types';
 import { FormField } from '~/shared/ui/form-field';
 
-import type { Organization } from '../model';
+import type { Organization } from '../model/organization';
 
-export type OrganizationFormState = { isSuccess: boolean } & Partial<
-    Omit<Organization, 'id' | 'type' | 'isArchived'> & {
-        isArchived: string;
-        typeId: string;
-    }
->;
+export type OrganizationFormValues = {
+    name?: string;
+    isArchived?: boolean;
+    typeId?: string;
+};
 
-type OrganizationFormProps = {
-    action: (prevState: OrganizationFormState, formData: FormData) => Promise<OrganizationFormState>;
+export type OrganizationFormErrors = {
+    name?: string;
+    isArchived?: string;
+    typeId?: string;
+};
+
+export type OrganizationFormProps = {
+    action?: (values: OrganizationFormValues) => Promise<OrganizationFormErrors> | OrganizationFormErrors;
     end?: ReactNode;
     organization?: Organization;
 };
 
 export function OrganizationForm({ action, end, organization }: OrganizationFormProps) {
-    const [state, dispatch] = useActionState(action, { isSuccess: true });
+    const submit = async (errors: OrganizationFormErrors, formData: FormData) => {
+        if (!action) return errors;
+        return action({
+            name: formData.get('name') as string,
+            isArchived: formData.get('isArchived') === 'on',
+            typeId: formData.get('typeId') as string
+        });
+    };
+    const [errors, dispatch] = useActionState(submit, {});
     return (
         <Flex asChild direction="column" gap="2">
             <form action={dispatch}>
-                <FormField error={state.name} label="Название">
+                <FormField error={errors.name} label="Название">
                     <TextField.Root
                         defaultValue={organization?.name}
                         name="name"
                         placeholder="Муниципальное учреждение"
                     />
                 </FormField>
-                <FormField error={state.typeId} label="Тип организации">
+                <FormField error={errors.typeId} label="Тип организации">
                     <OrganizationTypesSelector defaultValue={organization?.type.id} name="typeId" />
                 </FormField>
-                <FormField direction="row" error={state.isArchived} label="Архивная?">
+                <FormField direction="row" error={errors.isArchived} label="Архивная?">
                     <Checkbox defaultChecked={organization?.isArchived} name="isArchived" />
                 </FormField>
                 {end}

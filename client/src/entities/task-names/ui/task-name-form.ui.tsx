@@ -4,23 +4,36 @@ import { useActionState } from 'react';
 
 import { FormField } from '~/shared/ui/form-field';
 
-import type { TaskName } from '../model';
+import type { TaskName } from '../model/task-name';
 
-export type TaskNameFormState = { isSuccess: boolean } & Partial<Omit<TaskName, 'id'>>;
+export type TaskNameFormErrors = {
+    title?: string;
+};
 
-type TaskNameFormProps = {
-    action: (prevState: TaskNameFormState, formData: FormData) => Promise<TaskNameFormState>;
+export type TaskNameFormValues = {
+    title?: string;
+};
+
+export type TaskNameFormProps = {
+    action?: (values: TaskNameFormValues) => Promise<TaskNameFormErrors> | TaskNameFormErrors;
     end?: ReactNode;
     taskName?: TaskName;
 };
 
 export function TaskNameForm({ action, end, taskName }: TaskNameFormProps) {
-    const [state, dispatch] = useActionState(action, { isSuccess: true });
+    const submit = async (prev: TaskNameFormErrors, formData: FormData): Promise<TaskNameFormErrors> => {
+        if (!action) return prev;
+        return action({
+            title: formData.get('title') as string
+        });
+    };
+
+    const [state, dispatch] = useActionState(submit, {});
     return (
         <Flex asChild direction="column" gap="2">
             <form action={dispatch}>
-                <FormField error={state.name} label="Название">
-                    <TextField.Root defaultValue={taskName?.name} name="name" placeholder="Корректировка реестра" />
+                <FormField error={state.title} label="Наименование">
+                    <TextField.Root defaultValue={taskName?.title} name="title" placeholder="Корректировка реестра" />
                 </FormField>
                 {end}
             </form>

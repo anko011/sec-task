@@ -1,22 +1,44 @@
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import {
+  EntityManager,
+  EntityRepository,
+  ForeignKeyConstraintViolationException,
+} from '@mikro-orm/better-sqlite';
+import { InjectRepository } from '@mikro-orm/nestjs';
 
-import { TaskCategoriesPort } from '../../ports';
+import { TaskCategory } from '../../entities';
 
 import { DeleteTaskCategoryCommand } from './delete-task-category.command';
-import { NotFoundException } from '@nestjs/common';
 
 @CommandHandler(DeleteTaskCategoryCommand)
 export class DeleteTaskCategoryCommandHandler
   implements ICommandHandler<DeleteTaskCategoryCommand>
 {
-  public constructor(private readonly taskCategoriesPort: TaskCategoriesPort) {}
+  public constructor(
+    @InjectRepository(TaskCategory)
+    private readonly taskCategoriesRepository: EntityRepository<TaskCategory>,
+    private readonly entityManager: EntityManager,
+  ) {}
 
   public async execute({ id }: DeleteTaskCategoryCommand): Promise<void> {
-    const categories = await this.taskCategoriesPort.find({ id });
-    if (categories.length !== 1)
-      throw new NotFoundException(`Task category ${id} not found`);
-    const category = categories[0];
+    const taskCategory = await this.taskCategoriesRepository.findOne({
+      id,
+    });
 
-    await this.taskCategoriesPort.delete(category);
+    if (!taskCategory)
+      throw new NotFoundException(`Task category  with id ${id} not found`);
+
+    try {
+      await this.entityManager.removeAndFlush(taskCategory);
+    } catch (e) {
+      if (e instanceof ForeignKeyConstraintViolationException) {
+        throw new ConflictException(
+          `Cannot delete the task category  with id ${id} because it is referenced by other entities.`,
+        );
+      }
+
+      throw e;
+    }
   }
 }

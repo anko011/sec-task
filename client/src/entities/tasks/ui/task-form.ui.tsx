@@ -1,131 +1,92 @@
-import { Flex, TextArea, TextField } from '@radix-ui/themes';
-import type { ReactNode, RefObject } from 'react';
-import { useActionState, useCallback, useState } from 'react';
-import { useIMask } from 'react-imask';
+import { type ReactNode, useActionState, useCallback, useState } from 'react';
+import { Flex, TextArea } from '@radix-ui/themes';
 
-import { TaskCategoriesSelector, type TaskCategory } from '~/entities/task-categories/';
 import type { TaskName } from '~/entities/task-names';
 import { TaskNamesSelector } from '~/entities/task-names';
-import type { TaskDangerStatus } from '~/entities/tasks';
-import { DangerLevelSelector } from '~/entities/tasks';
+import type { TaskCategory } from '~/entities/task-categories/';
+import { TaskCategoriesSelector } from '~/entities/task-categories';
+
 import { FormField } from '~/shared/ui/form-field';
+import { ClearableTextField } from '~/shared/ui/clearable-text-field';
+import { IdentifierList } from '~/shared/ui/identifier-list';
 
-import type { TaskDTO } from '../model/task.dto';
-import { IdentifierList } from './identifier-list.ui';
+import { useNumberMask } from '../lib/use-number-mask';
+import type { TaskDraft } from '../model/task-draft';
 
-export type TaskFormProps = {
-    end?: ReactNode;
-    onSuccess?: (task: TaskDTO) => void;
-    task?: TaskDTO | null;
-};
+import { TaskDangerStatusSelector } from './task-danger-status-selector.ui';
 
-type TaskFormState = { isSuccess: boolean } & {
+export type TaskFormValues = {
+    unmaskedNumber?: string;
+    maskedNumber?: string;
+    name?: TaskName;
+    category?: TaskCategory;
     description?: string;
     dangerStatus?: string;
-    nameId?: string;
-    number?: string;
-    taskCategoryId?: string;
+    cve: string[];
+    bdu: string[];
 };
 
-function action(_: TaskFormState, formData: FormData): TaskFormState {
-    const requiredFields = ['nameId', 'number', 'description', 'dangerStatus', 'taskCategoryId'];
-    const errors: Record<string, string> = {};
+export type TaskFormErrors = {
+    number?: string;
+    name?: string;
+    category?: string;
+    description?: string;
+    dangerStatus?: string;
+    cve?: string;
+    bdu?: string;
+};
 
-    for (const key of requiredFields) {
-        if (key === 'taskCategoryId') {
-            if (!formData.has(key) || formData.get(key) === '' || formData.get(key) === '-1') {
-                errors[key] = 'Обязательное поле';
-            }
-        }
+export type TaskFormProps = {
+    action?: (values: TaskFormValues) => Promise<TaskFormErrors> | TaskFormErrors;
+    task?: TaskDraft;
+    end?: ReactNode;
+};
 
-        if (key === 'nameId') {
-            if (!formData.has(key) || formData.get(key) === '' || formData.get(key) === '-1') {
-                errors[key] = 'Обязательное поле';
-            }
-        }
+export function TaskForm({ action, task, end }: TaskFormProps) {
+    const [identifiers, setIdentifiers] = useState({
+        cve: task?.cve ?? [],
+        bdu: task?.bdu ?? []
+    });
 
-        if (!formData.has(key) || formData.get(key) === '') {
-            errors[key] = 'Обязательное поле';
-        }
-    }
-
-    if (Object.keys(errors).length > 0) return { isSuccess: false, ...errors };
-
-    return { isSuccess: true };
-}
-
-export function TaskForm({ end, onSuccess, task }: TaskFormProps) {
-    const [cveList, setCveList] = useState<string[]>(task?.CVE ?? []);
-    const [bduList, setBduList] = useState<string[]>(task?.BDU ?? []);
-
-    const [taskCategory, setTaskCategory] = useState<TaskCategory | undefined>(task?.category);
-    const [taskName, setTaskName] = useState<TaskName | undefined>(task?.name);
+    const [formMeta, setFormMeta] = useState({
+        name: task?.name,
+        category: task?.category,
+        dangerStatus: task?.dangerStatus
+    });
 
     const {
-        maskRef,
-        ref: numberRef,
-        value
-    } = useIMask(
-        {
-            definitions: {
-                0: /\d/
-            },
-            lazy: false,
-            mask: '000000',
-            overwrite: true,
-            placeholderChar: '_'
-        },
-        {
-            defaultValue: task?.number
-        }
-    );
+        ref,
+        unmaskedValue: unmaskedNumber,
+        value: maskedNumber,
+        setValue: setName
+    } = useNumberMask({ defaultValue: task?.number });
 
-    const submit = (prev: TaskFormState, formData: FormData) => {
-        const newErrors: { number?: string } = {};
-        if (maskRef.current != null) {
-            const nameField = maskRef.current;
-            if (!nameField.masked.isComplete) newErrors['number'] = 'Обязательное поле';
-        }
-
-        if (Object.keys(newErrors).length > 0) return { isSuccess: false, ...newErrors };
-
-        const state = action(prev, formData);
-        if (state.isSuccess) {
-            if (taskCategory == null || taskName == null) throw new Error();
-            onSuccess?.({
-                description: formData.get('description') as string,
-                name: taskName,
-                additionalInformation: formData.get('additionalInformation') as string,
-                BDU: bduList,
-                category: taskCategory,
-                CVE: cveList,
-                dangerStatus: formData.get('dangerStatus') as TaskDangerStatus,
-                number: formData.get('number') as string
-            });
-        }
-        return state;
+    const submit = async (prev: TaskFormErrors, formData: FormData): Promise<TaskFormErrors> => {
+        if (!action) return prev;
+        return action({
+            unmaskedNumber,
+            maskedNumber,
+            name: formMeta.name,
+            category: formMeta.category,
+            dangerStatus: formMeta.dangerStatus,
+            description: formData.get('description') as string,
+            cve: identifiers.cve,
+            bdu: identifiers.bdu
+        });
     };
 
-    const [state, dispatch] = useActionState(submit, { isSuccess: true });
+    const [state, dispatch] = useActionState(submit, {});
 
-    const addCve = useCallback((cve: string) => {
-        setCveList((prev) => [...prev, cve]);
-    }, []);
-
-    const removeCve = useCallback((value: string) => {
-        setCveList((prev) => prev.filter((v) => v !== value));
-    }, []);
-
-    const addBdu = useCallback((bdu: string) => {
-        setBduList((prev) => [...prev, bdu]);
-    }, []);
-
-    const removeBdu = useCallback((value: string) => {
-        setBduList((prev) => prev.filter((v) => v !== value));
-    }, []);
-
-    const changeCategory = useCallback((category?: TaskCategory) => {
-        setTaskCategory(category);
+    const handleIdentifierChange = useCallback((type: 'cve' | 'bdu', value: string, action: 'add' | 'remove') => {
+        setIdentifiers((prev) => {
+            const updated = new Set(prev[type]);
+            if (action === 'add') {
+                updated.add(value);
+            } else {
+                updated.delete(value);
+            }
+            return { ...prev, [type]: Array.from(updated) };
+        });
     }, []);
 
     return (
@@ -133,27 +94,43 @@ export function TaskForm({ end, onSuccess, task }: TaskFormProps) {
             <form action={dispatch}>
                 <Flex gap="2" justify="between" width="100%">
                     <FormField error={state.number} label="Номер">
-                        <TextField.Root
+                        <ClearableTextField
                             name="number"
-                            ref={numberRef as RefObject<HTMLInputElement>}
-                            style={{ width: '100%' }}
-                            value={value}
+                            ref={ref}
+                            onClear={() => {
+                                setName('');
+                            }}
                         />
                     </FormField>
-                    <FormField error={state.nameId} label="Наименование">
-                        <TaskNamesSelector defaultValue={task?.name.id} name="nameId" onChange={setTaskName} />
+
+                    <FormField error={state.name} label="Наименование">
+                        <TaskNamesSelector
+                            defaultValue={task?.name.id}
+                            name="nameId"
+                            onChange={(name) => {
+                                setFormMeta((prev) => ({ ...prev, name }));
+                            }}
+                        />
                     </FormField>
                 </Flex>
 
                 <Flex gap="4" justify="start" width="100%">
                     <FormField error={state.dangerStatus} label="Уровень опасности">
-                        <DangerLevelSelector defaultValue={task?.dangerStatus} />
+                        <TaskDangerStatusSelector
+                            value={formMeta.dangerStatus}
+                            onValueChange={(dangerStatus) => {
+                                setFormMeta((prev) => ({ ...prev, dangerStatus }));
+                            }}
+                        />
                     </FormField>
-                    <FormField error={state.taskCategoryId} label="Категория задачи">
+
+                    <FormField error={state.category} label="Категория задачи">
                         <TaskCategoriesSelector
                             defaultValue={task?.category.id}
-                            name="taskCategoryId"
-                            onChange={changeCategory}
+                            name="categoryId"
+                            onChange={(category) => {
+                                setFormMeta((prev) => ({ ...prev, category }));
+                            }}
                         />
                     </FormField>
                 </Flex>
@@ -162,19 +139,27 @@ export function TaskForm({ end, onSuccess, task }: TaskFormProps) {
                     <IdentifierList
                         label="CVE"
                         maskPattern="CVE-YYYY[-NNNN]"
-                        onAdd={addCve}
-                        onRemove={removeCve}
                         placeholder="CVE-2024-1234"
-                        values={cveList}
+                        values={identifiers.cve}
+                        onAdd={(v) => {
+                            handleIdentifierChange('cve', v, 'add');
+                        }}
+                        onRemove={(v) => {
+                            handleIdentifierChange('cve', v, 'remove');
+                        }}
                     />
 
                     <IdentifierList
                         label="BDU"
                         maskPattern="BDU:YYYY[-NNNNN]"
-                        onAdd={addBdu}
-                        onRemove={removeBdu}
                         placeholder="BDU:2024-12345"
-                        values={bduList}
+                        values={identifiers.bdu}
+                        onAdd={(v) => {
+                            handleIdentifierChange('bdu', v, 'add');
+                        }}
+                        onRemove={(v) => {
+                            handleIdentifierChange('bdu', v, 'remove');
+                        }}
                     />
                 </Flex>
 
@@ -189,12 +174,13 @@ export function TaskForm({ end, onSuccess, task }: TaskFormProps) {
 
                 <FormField label="Дополнительная информация">
                     <TextArea
-                        defaultValue={task?.additionalInformation}
+                        defaultValue={task?.additionalInformation ?? ''}
                         name="additionalInformation"
                         placeholder="Введите дополнительную информацию..."
                         style={{ height: '150px' }}
                     />
                 </FormField>
+
                 {end}
             </form>
         </Flex>

@@ -1,511 +1,318 @@
-import { BadRequestException } from '@nestjs/common';
-import { v4 } from 'uuid';
-
-import { TaskDangerStatus } from './task-danger-status';
-import { TaskCategory } from './task-category';
-import { Expose } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
-import { TaskName } from './task-name';
+import { Task, TaskDangerStatus, TaskStatus } from './task';
 import {
-  addDays,
-  addHours,
-  addMonths,
-  addWeeks,
-  isAfter,
-  setDate,
-} from 'date-fns';
+  Cascade,
+  Collection,
+  Entity,
+  EntityKey,
+  Enum,
+  Formula,
+  ManyToMany,
+  OneToMany,
+  Opt,
+  OptionalProps,
+  Property,
+  Reference,
+  wrap,
+} from '@mikro-orm/core';
+import { BaseEntity } from '~/common/entities';
+import { Organization } from '~/organizations/applications/entities';
+import { CreateTaskCommand, UpdateTaskCommand } from '../commands/tasks';
+import {
+  CreateTaskPackageCommand,
+  UpdateTaskPackageCommand,
+} from '../commands/task-packages';
+import { NotFoundException } from '@nestjs/common';
+import { addDays, addHours, addMonths, isAfter, set } from 'date-fns';
+import { Attachment } from '~/tasks/application/entities/attachment';
 
 export enum TaskPackageStatus {
   ACTIVE = 'ACTIVE',
   FIXED = 'FIXED',
 }
 
-export enum TaskStatus {
-  COMPENSATED = 'COMPENSATED',
-  COMPLETED = 'COMPLETED',
-  IN_PROGRESS = 'IN_PROGRESS',
-  NEW = 'NEW',
-  NO_ACTUAL = 'NO_ACTUAL',
-}
-
-interface TaskStatusHistory {
-  oldStatus: TaskStatus;
-  newStatus: TaskStatus;
-  changedAt: Date;
-  comment?: string;
-}
-
-export class TaskExecution {
-  public readonly taskId: string;
-  public readonly organizationId: string;
-  public status: TaskStatus;
-  public readonly statusHistory: TaskStatusHistory[] = [];
-}
-
-export type TaskFilterCriteria = {
-  id?: string;
-  additionalInformation?: string;
-  nameId?: string;
-  number?: string;
-  description?: string;
-  dangerStatus?: TaskDangerStatus;
-  categoryId?: string;
-};
-
-export class Task {
-  @ApiProperty()
-  public readonly id: string;
+@Entity()
+export class TaskPackage extends BaseEntity {
+  [OptionalProps]: ['reportDeadline', 'nearestTaskDeadline'];
 
   @ApiProperty()
-  additionalInformation: string;
+  @Property()
+  incomingRequisite: string;
 
   @ApiProperty()
-  name: TaskName;
+  @Property()
+  outgoingRequisite: string;
 
   @ApiProperty()
-  number: string;
+  @Enum(() => TaskPackageStatus)
+  status: TaskPackageStatus;
+
+  @OneToMany(() => Attachment, (attachment) => attachment.taskPackage, {
+    orphanRemoval: true,
+    cascade: [Cascade.PERSIST, Cascade.MERGE, Cascade.REMOVE],
+  })
+  attachments = new Collection<Attachment>(this);
+
+  @OneToMany(() => Task, (task) => task.taskPackage, {
+    orphanRemoval: true,
+    cascade: [Cascade.ALL],
+  })
+  tasks = new Collection<Task>(this);
+
+  @ManyToMany(() => Organization, 'packages', {
+    owner: true,
+    cascade: [Cascade.PERSIST, Cascade.MERGE, Cascade.REMOVE],
+  })
+  organizations = new Collection<Organization>(this);
 
   @ApiProperty()
-  description: string;
+  @Formula(
+    (alias) =>
+      `(SELECT COUNT(*) FROM task WHERE task_package_id = ${alias}.id)`,
+  )
+  @Property({ persist: false })
+  tasksCount: number & Opt;
 
   @ApiProperty()
-  dangerStatus: TaskDangerStatus;
+  @Formula(
+    (alias) =>
+      `(SELECT COUNT(*) FROM task_package_organizations WHERE task_package_id = ${alias}.id)`,
+  )
+  @Property({ persist: false })
+  organizationsCount: number & Opt;
+
+  @Formula(
+    (alias) => `(
+    SELECT 
+      CASE 
+        WHEN (SELECT COUNT(*) FROM task WHERE task_package_id = ${alias}.id) = 0 
+          OR (SELECT COUNT(*) FROM task_package_organizations WHERE task_package_id = ${alias}.id) = 0 
+        THEN 0
+        ELSE ROUND(
+          (
+            SELECT COUNT(*) 
+            FROM task_execution te
+            JOIN (
+              SELECT tsh.execution_id, tsh.new_status
+              FROM task_status_history tsh
+              JOIN (
+                SELECT execution_id, MAX(updated_at) as max_updated_at
+                FROM task_status_history
+                GROUP BY execution_id
+              ) latest ON tsh.execution_id = latest.execution_id AND tsh.updated_at = latest.max_updated_at
+            ) last_status ON last_status.execution_id = te.id
+            WHERE te.task_id IN (SELECT id FROM task WHERE task_package_id = ${alias}.id)
+              AND last_status.new_status IN ('COMPLETED', 'NO_ACTUAL', 'COMPENSATED')
+          ) * 100.0 / 
+          (
+            (SELECT COUNT(*) FROM task WHERE task_package_id = ${alias}.id) * 
+            (SELECT COUNT(*) FROM task_package_organizations WHERE task_package_id = ${alias}.id)
+          )
+        )
+      END
+  )`,
+  )
+  @Property({ persist: false })
+  completionPercentage: number & Opt;
 
   @ApiProperty()
-  category: TaskCategory;
+  @Property({ persist: false })
+  get reportDeadline(): Date {
+    const dangerLevels = this.tasks.getItems().map((task) => task.dangerStatus);
 
-  @ApiProperty()
-  BDU: string[];
+    const hasCriticalTask = dangerLevels.includes(TaskDangerStatus.CRITICAL);
+    const hasHighTask = dangerLevels.includes(TaskDangerStatus.HIGH);
 
-  @ApiProperty()
-  CVE: string[];
+    let preliminaryDeadline: Date;
 
-  @ApiProperty()
-  deadline: Date; // Новое поле для хранения дедлайна задачи
-
-  constructor(
-    private readonly _package: TaskPackage,
-    id: string,
-    name: TaskName,
-    number: string,
-    description: string,
-    additionalInformation: string,
-    BDU: string[],
-    CVE: string[],
-    dangerStatus: TaskDangerStatus,
-    category: TaskCategory,
-    private readonly createdAt: Date, // Добавляем дату создания
-  ) {
-    this.id = id;
-    this.additionalInformation = additionalInformation;
-    this.name = name;
-    this.number = number;
-    this.description = description;
-    this.dangerStatus = dangerStatus;
-    this.category = category;
-    this.BDU = BDU;
-    this.CVE = CVE;
-    this.deadline = this.calculateDeadline(createdAt); // Рассчитываем дедлайн при создании
-  }
-
-  @Expose()
-  @ApiProperty({ enum: TaskStatus, enumName: 'TaskStatus' })
-  get status(): TaskStatus {
-    const taskExecutions = this._package.taskExecutions.filter(
-      (te) => te.taskId === this.id,
-    );
-
-    if (taskExecutions.length === 0) {
-      return TaskStatus.NEW;
+    if (hasCriticalTask) {
+      preliminaryDeadline = addHours(this.createdAt, 24);
+    } else if (hasHighTask) {
+      preliminaryDeadline = addDays(this.createdAt, 7);
+    } else {
+      preliminaryDeadline = set(addMonths(this.createdAt, 1), {
+        date: 3,
+        hours: 0,
+        minutes: 0,
+        seconds: 0,
+        milliseconds: 0,
+      });
     }
 
-    const lastStatuses = taskExecutions.map((execution) => {
-      if (execution.statusHistory.length === 0) {
-        return {
-          status: execution.status,
-          changedAt: this.createdAt,
-        };
-      }
-
-      const lastChange = execution.statusHistory.reduce((latest, current) =>
-        current.changedAt > latest.changedAt ? current : latest,
-      );
-
-      return {
-        status: lastChange.newStatus,
-        changedAt: lastChange.changedAt,
-      };
+    const maxAllowedDeadline = set(addMonths(this.createdAt, 1), {
+      date: 3,
+      hours: 0,
+      minutes: 0,
+      seconds: 0,
+      milliseconds: 0,
     });
 
-    const overallLastStatus = lastStatuses.reduce((latest, current) =>
-      current.changedAt > latest.changedAt ? current : latest,
-    );
-
-    return overallLastStatus.status;
-  }
-
-  @Expose()
-  get progress() {
-    if (!this._package) {
-      return { completed: 0, total: 0, percentage: 0 };
+    if (isAfter(preliminaryDeadline, maxAllowedDeadline)) {
+      return set(addMonths(this.createdAt, 2), {
+        date: 3,
+        hours: 0,
+        minutes: 0,
+        seconds: 0,
+        milliseconds: 0,
+      });
     }
 
-    const executions = this._package.taskExecutions.filter(
-      (te) => te.taskId === this.id,
-    );
-    const completed = executions.filter(
-      (te) => te.status === TaskStatus.COMPLETED,
-    ).length;
-    const total = executions.length;
-
-    return {
-      completed,
-      total,
-      percentage: total > 0 ? Math.round((completed / total) * 100) : 0,
-    };
+    return preliminaryDeadline;
   }
 
-  private calculateDeadline(createdAt: Date): Date {
-    switch (this.dangerStatus) {
-      case TaskDangerStatus.CRITICAL:
-        return addHours(createdAt, 24);
-      case TaskDangerStatus.HIGH:
-        return addDays(createdAt, 7);
-      case TaskDangerStatus.MEDIUM:
-        return addWeeks(createdAt, 4);
-      case TaskDangerStatus.LOW:
-        return addMonths(createdAt, 4);
-      default:
-        return addMonths(createdAt, 4);
-    }
+  @Property({ persist: false, nullable: true })
+  get nearestTaskDeadline(): Date | undefined {
+    const deadlines = this.tasks.getItems().map((task) => task.deadline);
+    if (deadlines.length === 0) return undefined;
+    return deadlines.reduce((min, curr) => (curr < min ? curr : min));
   }
-
-  update(dto: UpdateTaskDTO) {
-    this.name = dto.name ?? this.name;
-    this.number = dto.number ?? this.number;
-    this.description = dto.description ?? this.description;
-    this.additionalInformation =
-      dto.additionalInformation ?? this.additionalInformation;
-    this.dangerStatus = dto.dangerStatus ?? this.dangerStatus;
-    this.category = dto.category ?? this.category;
-    this.BDU = dto.BDU ?? this.BDU;
-    this.CVE = dto.CVE ?? this.CVE;
-
-    // При изменении dangerStatus нужно пересчитать дедлайн
-    if (dto.dangerStatus) {
-      this.deadline = this.calculateDeadline(this.createdAt);
-    }
-  }
-}
-
-export type CreateTaskDTO = {
-  readonly additionalInformation?: string;
-  readonly name: TaskName;
-  readonly number: string;
-  readonly description: string;
-  readonly dangerStatus: TaskDangerStatus;
-  readonly category: TaskCategory;
-  readonly BDU: string[];
-  readonly CVE: string[];
-};
-
-export type UpdateTaskDTO = Partial<CreateTaskDTO> & { id: string };
-
-export type UpdateTaskPackageDTO = {
-  incomingRequisite?: string;
-  outgoingRequisite?: string;
-  status?: TaskPackageStatus;
-  assignedOrganizationIds?: string[];
-};
-
-export class TaskPackage {
-  public readonly id: string;
-  public _incomingRequisite: string;
-  public _outgoingRequisite: string;
-  private _status: TaskPackageStatus;
-
-  @ApiProperty()
-  public tasks: Task[] = [];
-
-  @ApiProperty()
-  public createdAt: Date;
-
-  private _assignedOrganizationIds: string[] = [];
-  private _taskExecutions: TaskExecution[] = [];
 
   constructor(
-    id: string,
     incomingRequisite: string,
     outgoingRequisite: string,
-    status: TaskPackageStatus,
-    assignedOrganizationIds: string[],
-    createdAt: Date,
+    status: TaskPackageStatus = TaskPackageStatus.ACTIVE,
   ) {
-    this.id = id;
-    this._incomingRequisite = incomingRequisite;
-    this._outgoingRequisite = outgoingRequisite;
-    this._status = status;
-    this._assignedOrganizationIds = assignedOrganizationIds;
-    this.createdAt = createdAt;
+    super();
+    this.incomingRequisite = incomingRequisite;
+    this.outgoingRequisite = outgoingRequisite;
+    this.status = status;
   }
 
-  @ApiProperty()
-  @Expose()
-  get tasksCount() {
-    return this.tasks.length;
-  }
-
-  @ApiProperty()
-  @Expose()
-  get assignedOrganizationCount() {
-    return this.assignedOrganizationIds.length;
-  }
-
-  @ApiProperty()
-  @Expose()
-  get incomingRequisite() {
-    return this._incomingRequisite;
-  }
-
-  set incomingRequisite(value: string) {
-    this._incomingRequisite = value;
-  }
-
-  @ApiProperty()
-  @Expose()
-  get outgoingRequisite() {
-    return this._outgoingRequisite;
-  }
-
-  set outgoingRequisite(value: string) {
-    this._outgoingRequisite = value;
-  }
-
-  @ApiProperty()
-  @Expose()
-  get status(): TaskPackageStatus {
-    return this._status;
-  }
-
-  set status(value: TaskPackageStatus) {
-    this._status = value;
-  }
-
-  @ApiProperty()
-  @Expose()
-  get assignedOrganizationIds(): string[] {
-    return this._assignedOrganizationIds;
-  }
-
-  set assignedOrganizationIds(value: string[]) {
-    this._assignedOrganizationIds = value;
-  }
-
-  @ApiProperty()
-  @Expose()
-  get taskExecutions(): TaskExecution[] {
-    return this._taskExecutions;
-  }
-
-  set taskExecutions(value: TaskExecution[]) {
-    this._taskExecutions = value;
-  }
-
-  changeTaskStatus(
-    taskId: string,
-    organizationId: string,
-    newStatus: TaskStatus,
-    comment?: string,
-  ): TaskExecution {
-    const execution = this.taskExecutions.find(
-      (te) => te.taskId === taskId && te.organizationId === organizationId,
+  static createFromDto(dto: CreateTaskPackageCommand['dto']): TaskPackage {
+    const taskPackage = new TaskPackage(
+      dto.incomingRequisite,
+      dto.outgoingRequisite,
+      dto.status,
     );
 
-    if (!execution) {
-      throw new BadRequestException(
-        `Task execution not found for task ${taskId} and organization ${organizationId}`,
-      );
+    taskPackage.organizations.set(
+      dto.assignedOrganizationIds.map((id) =>
+        Reference.createFromPK(Organization, id),
+      ),
+    );
+
+    for (const taskDto of dto.tasks) {
+      taskPackage.addTask(taskDto, dto.assignedOrganizationIds);
     }
 
-    this.validateStatusTransition(execution.status, newStatus);
-
-    execution.statusHistory.push({
-      oldStatus: execution.status,
-      newStatus,
-      changedAt: new Date(),
-      comment,
-    });
-
-    execution.status = newStatus;
-
-    return execution;
+    return taskPackage;
   }
 
-  private validateStatusTransition(
-    currentStatus: TaskStatus,
-    newStatus: TaskStatus,
-  ) {
-    const allowedTransitions: Record<TaskStatus, TaskStatus[]> = {
-      [TaskStatus.NEW]: [
-        TaskStatus.IN_PROGRESS,
-        TaskStatus.COMPLETED,
-        TaskStatus.COMPENSATED,
-        TaskStatus.NO_ACTUAL,
-      ],
-      [TaskStatus.IN_PROGRESS]: [
-        TaskStatus.COMPLETED,
-        TaskStatus.NO_ACTUAL,
-        TaskStatus.COMPENSATED,
-      ],
-      [TaskStatus.COMPLETED]: [TaskStatus.IN_PROGRESS],
-      [TaskStatus.COMPENSATED]: [TaskStatus.IN_PROGRESS],
-      [TaskStatus.NO_ACTUAL]: [TaskStatus.IN_PROGRESS],
-    };
-
-    if (!allowedTransitions[currentStatus]?.includes(newStatus)) {
-      throw new BadRequestException(
-        `Invalid status transition from ${currentStatus} to ${newStatus}`,
-      );
-    }
-  }
-
-  update(dto: UpdateTaskPackageDTO) {
+  public update(dto: UpdateTaskPackageCommand['dto']): void {
     this.incomingRequisite = dto.incomingRequisite ?? this.incomingRequisite;
     this.outgoingRequisite = dto.outgoingRequisite ?? this.outgoingRequisite;
+
     this.status = dto.status ?? this.status;
 
-    const createOrganizationIds = (dto.assignedOrganizationIds ?? []).filter(
-      (id) => !this.assignedOrganizationIds.includes(id),
-    );
-
-    this.tasks.forEach((task) => {
-      createOrganizationIds.forEach((organizationid) => {
-        this.taskExecutions.push({
-          taskId: task.id,
-          organizationId: organizationid,
-          statusHistory: [],
-          status: TaskStatus.NEW,
-        });
-      });
-    });
-
-    const deleteOrganizationIds = this.assignedOrganizationIds.filter(
-      (id) => !(dto.assignedOrganizationIds ?? []).includes(id),
-    );
-
-    this.taskExecutions = this._taskExecutions.filter(
-      (execution) => !deleteOrganizationIds.includes(execution.organizationId),
-    );
-
-    this.assignedOrganizationIds =
-      dto.assignedOrganizationIds ?? this.assignedOrganizationIds;
-  }
-
-  addTask(taskData: CreateTaskDTO): Task {
-    const id = v4();
-    const task = new Task(
-      this,
-      id,
-      taskData.name,
-      taskData.number,
-      taskData.description,
-      taskData.additionalInformation ?? '',
-      taskData.BDU ?? [],
-      taskData.CVE ?? [],
-      taskData.dangerStatus,
-      taskData.category,
-      this.createdAt,
-    );
-
-    this.tasks.push(task);
-
-    this.assignedOrganizationIds.forEach((orgId) => {
-      this.taskExecutions.push({
-        taskId: id,
-        organizationId: orgId,
-        statusHistory: [],
-        status: TaskStatus.NEW,
-      });
-    });
-
-    return task;
-  }
-
-  removeTask(taskOrId: Task | string) {
-    const taskId = typeof taskOrId === 'string' ? taskOrId : taskOrId.id;
-    this.tasks = this.tasks.filter((task) => task.id !== taskId);
-    this.taskExecutions = this.taskExecutions.filter(
-      (execution) => execution.taskId !== taskId,
-    );
-  }
-
-  updateTask(taskDTO: UpdateTaskDTO): Task {
-    const task = this.tasks.find(({ id }) => id === taskDTO.id);
-    if (!task)
-      throw new BadRequestException(`Task with id ${taskDTO.id} not found`);
-
-    task.update(taskDTO);
-    return task;
-  }
-
-  private removeTaskExecutions(taskId: string) {
-    this._taskExecutions = this._taskExecutions.filter(
-      (te) => te.taskId !== taskId,
-    );
-  }
-
-  @Expose()
-  @ApiProperty()
-  public get reportDeadline(): { deadline: Date; needsPostpone: boolean } {
-    const criticalHighTasks = this.tasks.filter(
-      (task) =>
-        task.dangerStatus === TaskDangerStatus.CRITICAL ||
-        task.dangerStatus === TaskDangerStatus.HIGH,
-    );
-
-    // Если есть критические/высокие уязвимости
-    if (criticalHighTasks.length > 0) {
-      const maxFixDeadline = criticalHighTasks.reduce((max, task) => {
-        return task.deadline > max ? task.deadline : max;
-      }, new Date(0));
-
-      const reportDeadline = addDays(maxFixDeadline, 1);
-      const nextMonth3rd = this.getNextMonth3rd();
-
-      return {
-        deadline: reportDeadline,
-        needsPostpone: isAfter(reportDeadline, nextMonth3rd),
-      };
+    if (dto.attachmentIds) {
+      for (const attachmentId of this.attachments.getIdentifiers()) {
+        if (!dto.attachmentIds.includes(attachmentId)) {
+          this.attachments.remove(
+            Reference.createFromPK(Attachment, attachmentId),
+          );
+        }
+      }
     }
 
-    // Если только средние/низкие уязвимости
+    if (dto.assignedOrganizationIds) {
+      this.organizations.set(
+        dto.assignedOrganizationIds.map((id) =>
+          Reference.createFromPK(Organization, id),
+        ),
+      );
+    }
+
+    this.updateTasks(dto.tasks);
+  }
+
+  public addTask(
+    taskDto: CreateTaskCommand['dto'],
+    organizationIds: string[],
+  ): Task {
+    const task = Task.createFromDto(this, taskDto, organizationIds);
+    this.tasks.add(task);
+    return task;
+  }
+
+  public removeTask(id: string): boolean {
+    const task = this.tasks.getIdentifiers().find((id) => id === id);
+    if (!task) throw new NotFoundException('Task with id ' + id + ' not found');
+
+    this.tasks.remove(Reference.createFromPK(Task, id));
+    return true;
+  }
+
+  public updateTask(id: string, taskDto: UpdateTaskCommand['dto']): Task {
+    const task = this.tasks.find((t) => t.id === id);
+    if (!task) throw new NotFoundException('Task with id ' + id + ' not found');
+    task.update(taskDto, this.organizations.getIdentifiers());
+    return task;
+  }
+
+  public updateTaskStatus(
+    organizationId: string,
+    taskId: string,
+    status: TaskStatus,
+    comment: string,
+  ) {
+    const task = this.tasks.find((t) => t.id === taskId);
+
+    if (!task)
+      throw new NotFoundException('Task with id ' + taskId + ' not found');
+
+    task.updateStatus(organizationId, status, comment);
+  }
+
+  public fix(): boolean {
+    const canFix = this.tasks
+      .map((t) => t.isCompletedAllOrganizations)
+      .every((t) => t);
+
+    if (!canFix) return false;
+
+    this.status = TaskPackageStatus.FIXED;
+    return true;
+  }
+
+  public toJSON(...args: EntityKey<TaskPackage>[]): { [p: string]: any } {
+    const dto = wrap<TaskPackage>(this, true).toObject([...args]);
+
     return {
-      deadline: this.getNextMonth3rd(),
-      needsPostpone: false,
+      ...dto,
+      tasks: this.tasks.getIdentifiers(),
+      organizations: this.organizations.getIdentifiers(),
     };
   }
 
-  private getNextMonth3rd(): Date {
-    const nextMonth = addMonths(this.createdAt, 1);
-    return setDate(nextMonth, 3);
-  }
+  private updateTasks(
+    taskDtos: UpdateTaskPackageCommand['dto']['tasks'],
+  ): void {
+    const existingTaskMap = new Map(
+      this.tasks.getItems().map((task) => [task.id, task]),
+    );
 
-  @Expose()
-  @ApiProperty()
-  public get submissionData(): Date {
-    const { deadline, needsPostpone } = this.reportDeadline;
-
-    if (needsPostpone) {
-      // Перенос: 5 число месяца после месяца дедлайна
-      const deadlineMonth = new Date(
-        deadline.getFullYear(),
-        deadline.getMonth(),
-        1,
-      );
-      return setDate(addMonths(deadlineMonth, 1), 5);
+    const updatedTaskIds = new Set<string>();
+    for (const dto of taskDtos) {
+      if ('id' in dto && existingTaskMap.has(dto.id)) {
+        const existingTask = existingTaskMap.get(dto.id)!;
+        existingTask.update(dto, this.organizations.getIdentifiers());
+        updatedTaskIds.add(existingTask.id);
+      } else {
+        if ('id' in dto) return;
+        const newTask = Task.createFromDto(
+          this,
+          dto,
+          this.organizations.getIdentifiers(),
+        );
+        updatedTaskIds.add(newTask.id);
+        this.tasks.add(newTask);
+      }
     }
 
-    // Стандартный срок: 5 число следующего месяца от создания пакета
-    return setDate(addMonths(this.createdAt, 1), 5);
+    const toRemove = this.tasks
+      .getItems()
+      .filter((task) => !updatedTaskIds.has(task.id));
+
+    this.tasks.remove(toRemove);
   }
 }

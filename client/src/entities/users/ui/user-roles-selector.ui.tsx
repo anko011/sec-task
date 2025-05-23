@@ -1,20 +1,18 @@
 import { Select } from '@radix-ui/themes';
 
-import { rolesMapping } from '../model';
+import { type Role, rolesMapping } from '../model';
 
-export type FilterUserRolesSelectorProps = {
-    name?: string;
-    defaultValue?: string;
-    onChange?: (roleId?: string) => void;
+export type FilterUserRolesSelectorProps = Select.RootProps & {
+    onChange?: (role?: Role) => void;
 };
 
-export function UserRolesSelector({ name, defaultValue, onChange }: FilterUserRolesSelectorProps) {
+export function UserRolesSelector({ defaultValue, onChange, ...props }: FilterUserRolesSelectorProps) {
     const handleChangeStatus = (value: string) => {
-        onChange?.(value === '-1' ? undefined : value);
+        onChange?.(value === '-1' ? undefined : (value as Role));
     };
 
     return (
-        <Select.Root defaultValue={defaultValue ?? '-1'} name={name} onValueChange={handleChangeStatus}>
+        <Select.Root defaultValue={defaultValue ?? '-1'} onValueChange={handleChangeStatus} {...props}>
             <Select.Trigger />
             <Select.Content>
                 <Select.Item value="-1">Не выбрано</Select.Item>

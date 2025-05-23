@@ -1,11 +1,10 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { EntityManager, EntityRepository } from '@mikro-orm/better-sqlite';
 
-import {
-  OrganizationFilterCriteria,
-  OrganizationsPort,
-  OrganizationTypesPort,
-} from '../../ports';
+import { deepCleanObject } from '~/common/utils';
+
 import { Organization } from '../../entities';
 
 import { UpdateOrganizationCommand } from './update-organization.command';
@@ -15,37 +14,29 @@ export class UpdateOrganizationCommandHandler
   implements ICommandHandler<UpdateOrganizationCommand>
 {
   public constructor(
-    private readonly organizationsPort: OrganizationsPort,
-    private readonly organizationTypesPort: OrganizationTypesPort,
+    @InjectRepository(Organization)
+    private readonly organizationsRepository: EntityRepository<Organization>,
+    private readonly entityManager: EntityManager,
   ) {}
 
   public async execute({
+    id,
     dto,
   }: UpdateOrganizationCommand): Promise<Organization> {
-    const organizations = await this.organizationsPort.find({
-      id: dto.id,
+    const organization = await this.organizationsRepository.findOne({
+      id,
     });
 
-    if (organizations.length !== 1)
-      throw new NotFoundException(`Organization with id ${dto.id} not found`);
+    if (!organization)
+      throw new BadRequestException(`Organization  with id ${id} not found`);
 
-    const organization = organizations[0];
+    const updatedOrganizationType = this.organizationsRepository.assign(
+      organization,
+      deepCleanObject({ ...dto, typeId: null, type: dto.typeId }),
+    );
 
-    const opt: OrganizationFilterCriteria = { ...dto };
-    if (dto.typeId) {
-      const types = await this.organizationTypesPort.find({ id: dto.typeId });
-      if (types.length !== 1)
-        throw new BadRequestException(
-          `Organization type with ${dto.typeId} not found.`,
-        );
+    await this.entityManager.persistAndFlush(updatedOrganizationType);
 
-      opt.type = types[0];
-    }
-
-    organization.name = opt.name ?? organization.name;
-    organization.type = opt.type ?? organization.type;
-    organization.isArchived = opt.isArchived ?? organization.isArchived;
-
-    return await this.organizationsPort.save(organization);
+    return updatedOrganizationType;
   }
 }

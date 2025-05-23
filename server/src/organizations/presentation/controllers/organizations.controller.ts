@@ -36,6 +36,7 @@ import {
   DeleteOrganizationCommand,
   UpdateOrganizationCommand,
 } from '../../applications/commands/organizations';
+import { ParseBooleanPipe } from '~/common/pipes';
 
 @ApiBearerAuth()
 @Controller('organizations')
@@ -57,10 +58,8 @@ export class OrganizationsController {
     @Query('offset') offset?: number,
     @Query('name') name?: string,
     @Query('typeId') typeId?: string,
-    @Query('archived') archived?: string,
+    @Query('isArchived', ParseBooleanPipe) isArchived?: boolean,
   ): Promise<Paginated<Organization[]>> {
-    const isArchived = archived !== undefined ? archived === 'on' : archived;
-
     return this.queryBus.execute<FindPaginatedOrganizationsQuery>(
       new FindPaginatedOrganizationsQuery(
         { typeId, isArchived, name },
@@ -111,9 +110,7 @@ export class OrganizationsController {
     @Param('id') id: string,
     @Body() dto: UpdateOrganizationDTO,
   ): Promise<Organization> {
-    return this.commandBus.execute(
-      new UpdateOrganizationCommand({ id, ...dto }),
-    );
+    return this.commandBus.execute(new UpdateOrganizationCommand(id, dto));
   }
 
   @Delete(':id')

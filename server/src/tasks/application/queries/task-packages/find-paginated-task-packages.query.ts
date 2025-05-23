@@ -1,12 +1,16 @@
 import { IQuery } from '@nestjs/cqrs';
 
 import { PaginationOptions } from '../../../../common/queries';
-
-import { TaskPackageFilterCriteria } from '../../ports';
+import { TaskPackageStatus } from '~/tasks/application/entities';
 
 export class FindPaginatedTaskPackagesQuery implements IQuery {
-  public constructor(
-    public readonly where?: TaskPackageFilterCriteria,
-    public readonly options?: PaginationOptions,
+  constructor(
+    readonly refreshToken?: string,
+    readonly where?: {
+      readonly incomingRequisite?: string;
+      readonly outgoingRequisite?: string;
+      readonly status?: TaskPackageStatus;
+    },
+    readonly options?: PaginationOptions,
   ) {}
 }

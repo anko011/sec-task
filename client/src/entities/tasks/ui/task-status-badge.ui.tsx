@@ -1,7 +1,7 @@
 import type { BadgeProps } from '@radix-ui/themes';
 import { Badge } from '@radix-ui/themes';
 
-import { TaskStatus } from '~/entities/tasks';
+import { TaskStatus } from '../model/task-status';
 
 const taskStatusesMap: Record<TaskStatus, { color: BadgeProps['color']; text: string }> = {
     [TaskStatus.COMPENSATED]: { color: 'green', text: 'Приняты компенсирующие меры' },

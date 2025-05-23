@@ -1,2 +1,2 @@
-export type { TaskName } from './task-name';
-export { useTaskNames } from './use-task-names.hook';
+export { useTaskNames } from './use-task-names';
+export { type TaskName } from './task-name';

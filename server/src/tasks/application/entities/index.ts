@@ -1,10 +1,7 @@
 export { TaskCategory, type TaskCategoryFilterCriteria } from './task-category';
-export { TaskDangerStatus } from './task-danger-status';
-export {
-  TaskPackage,
-  Task,
-  TaskStatus,
-  TaskPackageStatus,
-  TaskExecution,
-} from './task-package';
-export { TaskName, type TaskNameFilterCriteria } from './task-name';
+export { TaskPackage, TaskPackageStatus } from './task-package';
+export { TaskName } from './task-name';
+export { Task, TaskStatus, TaskDangerStatus } from './task';
+export { TaskExecution } from './task-execution';
+export { Attachment } from './attachment';
+export { TaskStatusHistory } from './task-status-history';

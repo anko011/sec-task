@@ -1,2 +1,6 @@
-export * from './contracts';
-export * from './repository';
+export {
+    GetPaginatedTaskCategoriesContract,
+    GetTaskCategoryContract,
+    CreateTaskCategoryContract,
+    EditTaskCategoryContract
+} from './contracts';

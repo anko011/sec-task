@@ -1,46 +1,30 @@
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { EntityRepository } from '@mikro-orm/better-sqlite';
 
-import { Paginated } from '../../../../common/queries';
+import { Paginated, prepareSearchConditions } from '~/common/queries';
 
-import {
-  OrganizationFilterCriteria,
-  OrganizationsPort,
-  OrganizationTypesPort,
-} from '../../ports';
 import { Organization } from '../../entities';
 
 import { FindPaginatedOrganizationsQuery } from './find-paginated-organizations.query';
-import { BadRequestException } from '@nestjs/common';
 
 @QueryHandler(FindPaginatedOrganizationsQuery)
 export class FindPaginatedOrganizationsQueryHandler
   implements IQueryHandler<FindPaginatedOrganizationsQuery>
 {
   public constructor(
-    private readonly organizationsPort: OrganizationsPort,
-    private readonly organizationTypesPort: OrganizationTypesPort,
+    @InjectRepository(Organization)
+    private readonly organizationsRepository: EntityRepository<Organization>,
   ) {}
 
   public async execute({
     where,
     options,
   }: FindPaginatedOrganizationsQuery): Promise<Paginated<Organization[]>> {
-    const opt: OrganizationFilterCriteria = { ...where };
-
-    if (where?.typeId) {
-      const types = await this.organizationTypesPort.find({ id: where.typeId });
-      if (types.length !== 1)
-        throw new BadRequestException(
-          `Organization type with id ${where.typeId} not found.`,
-        );
-
-      opt.type = types[0];
-    }
-
-    const [items, total] = await Promise.all([
-      this.organizationsPort.find(opt, options),
-      this.organizationsPort.count(),
-    ]);
+    const [items, total] = await this.organizationsRepository.findAndCount(
+      prepareSearchConditions({ ...where, typeId: null, type: where?.typeId }),
+      options,
+    );
 
     return {
       items,

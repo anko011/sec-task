@@ -1,54 +1,56 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { EntityManager, EntityRepository } from '@mikro-orm/better-sqlite';
+import {
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
+
+import { Task, TaskPackage } from '../../entities';
 
 import { CreateTaskCommand } from './create-task.command';
-import {
-  TaskCategoriesPort,
-  TaskNamesPort,
-  TaskPackagesPort,
-} from '../../ports';
-import { Task } from '../../entities/task-package';
-import { BadRequestException } from '@nestjs/common';
 
 @CommandHandler(CreateTaskCommand)
 export class CreateTaskCommandHandler
   implements ICommandHandler<CreateTaskCommand>
 {
-  public constructor(
-    private readonly taskPackagesPort: TaskPackagesPort,
-    private readonly taskCategoriesPort: TaskCategoriesPort,
-    private readonly taskNamesPort: TaskNamesPort,
+  constructor(
+    @InjectRepository(TaskPackage)
+    private readonly taskPackageRepository: EntityRepository<TaskPackage>,
+    private readonly entityManager: EntityManager,
   ) {}
 
   public async execute({ packageId, dto }: CreateTaskCommand): Promise<Task> {
-    const packages = await this.taskPackagesPort.find({ id: packageId });
+    const taskPackage = await this.findTaskPackageOrFail(packageId);
+    const task = taskPackage.addTask(
+      dto,
+      taskPackage.organizations.getIdentifiers(),
+    );
+    await this.flushChanges(taskPackage);
 
-    if (packages.length !== 1)
-      throw new BadRequestException(`Package ${packageId} not found`);
-
-    const taskPackage = packages[0];
-
-    const taskCategories = await this.taskCategoriesPort.find({
-      id: dto.categoryId,
-    });
-
-    if (taskCategories.length !== 1)
-      throw new BadRequestException(
-        `Task category ${dto.categoryId} not found`,
-      );
-
-    const taskNames = await this.taskNamesPort.find({
-      id: dto.nameId,
-    });
-
-    if (taskNames.length !== 1)
-      throw new BadRequestException(`Task name ${dto.nameId} not found`);
-
-    const task = taskPackage.addTask({
-      ...dto,
-      category: taskCategories[0],
-      name: taskNames[0],
-    });
-    await this.taskPackagesPort.save(taskPackage);
     return task;
+  }
+
+  private async findTaskPackageOrFail(id: string): Promise<TaskPackage> {
+    const taskPackage = await this.taskPackageRepository.findOne(
+      { id },
+      { populate: ['*'] },
+    );
+
+    if (!taskPackage) {
+      throw new NotFoundException(`Task package with id ${id} not found`);
+    }
+
+    return taskPackage;
+  }
+
+  private async flushChanges(taskPackage: TaskPackage): Promise<void> {
+    try {
+      await this.entityManager.persistAndFlush(taskPackage);
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Failed to save task package changes: ${error.message}`,
+      );
+    }
   }
 }

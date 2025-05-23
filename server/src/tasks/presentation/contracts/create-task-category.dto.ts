@@ -5,7 +5,7 @@ export class CreateTaskCategoryDTO {
   @ApiProperty()
   @IsString()
   @IsNotEmpty({ message: 'Обязательное поле' })
-  readonly name: string;
+  readonly title: string;
 
   @ApiProperty()
   @IsString()

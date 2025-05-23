@@ -1,6 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { Role } from '../../application/entities';
+import { IsExistingId } from '~/common/validators';
+import { Organization } from '~/organizations/applications/entities';
 
 export class CreateUserDTO {
   @ApiProperty()
@@ -29,7 +31,9 @@ export class CreateUserDTO {
 
   @ApiProperty()
   @IsString()
-  @IsNotEmpty({ message: 'Обязательное поле' })
+  @IsNotEmpty()
+  @IsExistingId(Organization)
+  @IsOptional()
   readonly organizationId: string;
 
   @ApiProperty()

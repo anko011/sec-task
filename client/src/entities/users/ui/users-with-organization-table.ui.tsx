@@ -1,24 +1,22 @@
 import { Table, Text } from '@radix-ui/themes';
 import type { ReactNode } from 'react';
 
-import type { UserWithOrganization } from '../model';
+import type { User, UserWithOrganization } from '../model';
 import { UserRoleBadge } from './user-role-badge.ui';
 
 export type UsersWithOrganizationTableProps = Table.RootProps & {
-    actionEnd?: {
-        title: string;
-        action: (user: UserWithOrganization) => ReactNode;
-    };
-    actionStart?: {
-        title: string;
-        action: (user: UserWithOrganization) => ReactNode;
-    };
+    actionEndTitle?: ReactNode;
+    actionEnd?: (user: UserWithOrganization | User) => ReactNode;
+    actionStartTitle?: ReactNode;
+    actionStart?: (user: UserWithOrganization) => ReactNode;
     data: UserWithOrganization[];
 };
 
 export function UsersWithOrganizationTable({
-    actionEnd,
+    actionStartTitle,
     actionStart,
+    actionEndTitle,
+    actionEnd,
     data,
     ...props
 }: UsersWithOrganizationTableProps) {
@@ -26,23 +24,21 @@ export function UsersWithOrganizationTable({
         <Table.Root {...props}>
             <Table.Header>
                 <Table.Row>
-                    {actionStart != null && <Table.ColumnHeaderCell>{actionStart.title}</Table.ColumnHeaderCell>}
+                    {!!actionStartTitle && <Table.ColumnHeaderCell>{actionStartTitle}</Table.ColumnHeaderCell>}
                     <Table.ColumnHeaderCell>Email</Table.ColumnHeaderCell>
                     <Table.ColumnHeaderCell>Имя</Table.ColumnHeaderCell>
                     <Table.ColumnHeaderCell>Фамилия</Table.ColumnHeaderCell>
                     <Table.ColumnHeaderCell>Отчество</Table.ColumnHeaderCell>
                     <Table.ColumnHeaderCell>Роль</Table.ColumnHeaderCell>
                     <Table.ColumnHeaderCell>Организация</Table.ColumnHeaderCell>
-                    {actionEnd != null && (
-                        <Table.ColumnHeaderCell width="72px">{actionEnd.title}</Table.ColumnHeaderCell>
-                    )}
+                    {!!actionEndTitle && <Table.ColumnHeaderCell width="72px">{actionEndTitle}</Table.ColumnHeaderCell>}
                 </Table.Row>
             </Table.Header>
 
             <Table.Body>
                 {data.map((user) => (
                     <Table.Row align="center" key={user.id}>
-                        {actionStart != null && <Table.Cell>{actionStart.action(user)}</Table.Cell>}
+                        {!!actionStart && <Table.Cell>{actionStart(user)}</Table.Cell>}
                         <Table.Cell>{user.email}</Table.Cell>
                         <Table.Cell>{user.firstName}</Table.Cell>
                         <Table.Cell>{user.secondName}</Table.Cell>
@@ -50,8 +46,8 @@ export function UsersWithOrganizationTable({
                         <Table.Cell>
                             <UserRoleBadge role={user.role} />
                         </Table.Cell>
-                        <Table.Cell>{user.organization.name}</Table.Cell>
-                        {actionEnd != null && <Table.Cell>{actionEnd.action(user)}</Table.Cell>}
+                        <Table.Cell>{user.organization?.name ?? ' - '}</Table.Cell>
+                        {!!actionEnd && <Table.Cell>{actionEnd(user)}</Table.Cell>}
                     </Table.Row>
                 ))}
                 {data.length === 0 && (

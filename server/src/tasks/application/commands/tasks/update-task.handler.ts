@@ -1,12 +1,9 @@
+import { NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { BadRequestException } from '@nestjs/common';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { EntityManager, EntityRepository } from '@mikro-orm/better-sqlite';
 
-import {
-  TaskCategoriesPort,
-  TaskNamesPort,
-  TaskPackagesPort,
-} from '../../ports';
-import { Task } from '../../entities';
+import { Task, TaskPackage } from '../../entities';
 
 import { UpdateTaskCommand } from './update-task.command';
 
@@ -15,28 +12,31 @@ export class UpdateTaskCommandHandler
   implements ICommandHandler<UpdateTaskCommand>
 {
   public constructor(
-    private readonly taskPackagesPort: TaskPackagesPort,
-    private readonly taskCategoriesPort: TaskCategoriesPort,
-    private readonly taskNamesPort: TaskNamesPort,
+    @InjectRepository(TaskPackage)
+    private taskPackagesRepository: EntityRepository<TaskPackage>,
+    private readonly entityManager: EntityManager,
   ) {}
 
-  public async execute({ packageId, dto }: UpdateTaskCommand): Promise<Task> {
-    const taskPackages = await this.taskPackagesPort.find({ id: packageId });
+  public async execute({
+    packageId,
+    id,
+    dto,
+  }: UpdateTaskCommand): Promise<Task> {
+    const taskPackage = await this.taskPackagesRepository.findOne(
+      {
+        id: packageId,
+      },
+      { populate: ['*'] },
+    );
 
-    if (taskPackages.length !== 1)
-      throw new BadRequestException(`Task package with id ${dto.id} not found`);
+    if (!taskPackage)
+      throw new NotFoundException(
+        `Task package with id ${packageId} not found`,
+      );
 
-    const taskPackage = taskPackages[0];
+    const task = taskPackage.updateTask(id, dto);
 
-    const category = (
-      await this.taskCategoriesPort.find({ id: dto.categoryId })
-    ).at(0);
-
-    const name = (await this.taskNamesPort.find({ id: dto.nameId })).at(0);
-
-    const task = taskPackage.updateTask({ ...dto, category, name });
-
-    await this.taskPackagesPort.save(taskPackage);
+    await this.entityManager.persistAndFlush(task);
     return task;
   }
 }
