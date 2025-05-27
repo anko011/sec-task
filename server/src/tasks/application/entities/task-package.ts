@@ -61,7 +61,7 @@ export class TaskPackage extends BaseEntity {
 
   @ManyToMany(() => Organization, 'packages', {
     owner: true,
-    cascade: [Cascade.PERSIST, Cascade.MERGE, Cascade.REMOVE],
+    cascade: [Cascade.PERSIST, Cascade.MERGE],
   })
   organizations = new Collection<Organization>(this);
 
@@ -167,6 +167,8 @@ export class TaskPackage extends BaseEntity {
     return deadlines.reduce((min, curr) => (curr < min ? curr : min));
   }
 
+  private onAddTaskHandlers?: ((task: Task) => void)[] = [];
+
   constructor(
     incomingRequisite: string,
     outgoingRequisite: string,
@@ -176,6 +178,7 @@ export class TaskPackage extends BaseEntity {
     this.incomingRequisite = incomingRequisite;
     this.outgoingRequisite = outgoingRequisite;
     this.status = status;
+    this.onAddTaskHandlers = [];
   }
 
   static createFromDto(dto: CreateTaskPackageCommand['dto']): TaskPackage {
@@ -231,6 +234,7 @@ export class TaskPackage extends BaseEntity {
   ): Task {
     const task = Task.createFromDto(this, taskDto, organizationIds);
     this.tasks.add(task);
+    this.onAddTaskHandlers?.forEach((handler) => void handler(task));
     return task;
   }
 
@@ -274,6 +278,11 @@ export class TaskPackage extends BaseEntity {
     return true;
   }
 
+  public addOnAddTask(handler: (task: Task) => void) {
+    if (!this.onAddTaskHandlers) this.onAddTaskHandlers = [];
+    this.onAddTaskHandlers.push(handler);
+  }
+
   public toJSON(...args: EntityKey<TaskPackage>[]): { [p: string]: any } {
     const dto = wrap<TaskPackage>(this, true).toObject([...args]);
 
@@ -305,13 +314,11 @@ export class TaskPackage extends BaseEntity {
     });
 
     toCreate.forEach((dto) => {
-      const newTask = Task.createFromDto(
-        this,
+      const task = this.addTask(
         dto as CreateTaskCommand['dto'],
         assignedOrganizationIds ?? this.organizations.getIdentifiers(),
       );
-      taskIds.add(newTask.id);
-      this.tasks.add(newTask);
+      taskIds.add(task.id);
     });
 
     const toRemove = this.tasks

@@ -16,6 +16,7 @@ import type { TaskDraft } from '../model/task-draft';
 import { TaskDangerStatusSelector } from './task-danger-status-selector.ui';
 
 export type TaskFormValues = {
+    id?: string;
     unmaskedNumber?: string;
     maskedNumber?: string;
     name?: TaskName;
@@ -64,6 +65,7 @@ export function TaskForm({ action, task, end }: TaskFormProps) {
     const submit = async (prev: TaskFormErrors, formData: FormData): Promise<TaskFormErrors> => {
         if (!action) return prev;
         return action({
+            id: task && 'id' in task ? (task.id as string) : undefined,
             unmaskedNumber,
             maskedNumber,
             name: formMeta.name,

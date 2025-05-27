@@ -54,12 +54,18 @@ function useTaskFormHandler(mode: 'create' | 'edit', taskDraft?: TaskDraft, onSu
     return (values: TaskFormValues) => {
         const validation = TaskDraftSchema.safeParse({ ...values, number: values.unmaskedNumber });
         if (validation.success) {
-            const newDraft = { ...validation.data, number: values.maskedNumber } as TaskDraft;
+            const newDraft = {
+                ...validation.data,
+                number: values.maskedNumber,
+                id: values.id
+            } as TaskDraft & { id?: string };
 
             setTaskDrafts((prev) =>
                 mode === 'create'
                     ? [...prev, newDraft]
-                    : prev.map((draft) => (draft.number === taskDraft?.number ? newDraft : draft))
+                    : prev.map((draft) => {
+                          return draft.number === taskDraft?.number ? newDraft : draft;
+                      })
             );
 
             toast.success(

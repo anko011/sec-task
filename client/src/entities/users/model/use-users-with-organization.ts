@@ -56,6 +56,7 @@ export function useUsersWithOrganization(filters: UserWithOrganizationFilters, p
     return {
         isLoading,
         data,
+        mutate,
         remove,
         create,
         edit

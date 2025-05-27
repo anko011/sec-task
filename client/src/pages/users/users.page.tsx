@@ -1,11 +1,13 @@
 import { Flex } from '@radix-ui/themes';
 import { UsersBuilder } from './ui/users-builder.ui';
+import { PackageRegistryButton } from '~/features/users';
 
 export default function UsersPage() {
     return (
         <UsersBuilder.Root>
             <Flex width="100%" gap="4" pl="3">
                 <UsersBuilder.Create />
+                <PackageRegistryButton />
                 <UsersBuilder.EmailFilter />
                 <UsersBuilder.FirstNameFilter />
                 <UsersBuilder.SecondNameFilter />

@@ -18,7 +18,18 @@ export type FileUploaderProps = DetailedHTMLProps<InputHTMLAttributes<HTMLInputE
     files: (File | Attachment)[];
 };
 
-export function FileUploader({ files, onUpdateAttachments, onFilesUpload, ...props }: FileUploaderProps) {
+function getFileExt(filename: string) {
+    return '.' + filename.substring(filename.lastIndexOf('.') + 1, filename.length) || filename;
+}
+
+export function FileUploader({
+    accept,
+    multiple,
+    files,
+    onUpdateAttachments,
+    onFilesUpload,
+    ...props
+}: FileUploaderProps) {
     const [isDragging, setIsDragging] = useState(false);
 
     const handleDragEnter: DragEventHandler = (e) => {
@@ -38,23 +49,45 @@ export function FileUploader({ files, onUpdateAttachments, onFilesUpload, ...pro
     const handleDrop: DragEventHandler = (e) => {
         e.preventDefault();
         setIsDragging(false);
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            onFilesUpload?.((prev) => [
-                ...prev,
-                ...Array.from(files).filter((f) => !prev.map((ef) => ef.name).includes(f.name))
-            ]);
+        const fileList = e.dataTransfer.files;
+
+        if (fileList.length > 0) {
+            let files = Array.from(fileList);
+
+            if (accept) {
+                files = files.filter((f) => getFileExt(f.name) === accept);
+            }
+
+            if (!multiple) {
+                const file = files[0];
+                if (!file) return;
+                onFilesUpload?.([file]);
+                return;
+            }
+
+            onFilesUpload?.((prev) => [...prev, ...files.filter((f) => !prev.map((ef) => ef.name).includes(f.name))]);
         }
     };
 
     const handleFileInput: ChangeEventHandler<HTMLInputElement> = (e) => {
-        const files = e.target.files;
-        if (files == null) return;
-        if (files.length > 0) {
-            onFilesUpload?.((prev) => [
-                ...prev,
-                ...Array.from(files).filter((f) => !prev.map((ef) => ef.name).includes(f.name))
-            ]);
+        const fileList = e.target.files;
+        if (fileList == null) return;
+
+        if (fileList.length > 0) {
+            let files = Array.from(fileList);
+
+            if (accept) {
+                files = files.filter((f) => getFileExt(f.name) === accept);
+            }
+
+            if (!multiple) {
+                const file = files[0];
+                if (!file) return;
+                onFilesUpload?.([file]);
+                return;
+            }
+
+            onFilesUpload?.((prev) => [...prev, ...files.filter((f) => !prev.map((ef) => ef.name).includes(f.name))]);
         }
     };
 
@@ -91,10 +124,11 @@ export function FileUploader({ files, onUpdateAttachments, onFilesUpload, ...pro
                 <label htmlFor="file-input">
                     <input
                         id="file-input"
-                        multiple
                         onChange={handleFileInput}
                         style={{ display: 'none' }}
                         type="file"
+                        multiple={multiple}
+                        accept={accept}
                         {...props}
                     />
                     <Box

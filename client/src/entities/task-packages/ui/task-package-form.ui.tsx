@@ -116,6 +116,7 @@ export function TaskPackageForm({ action, taskPackage }: TaskPackageFormProps) {
                                         files={[...filesToUpload, ...attachments]}
                                         onFilesUpload={setFilesToUpload}
                                         onUpdateAttachments={setAttachments}
+                                        multiple
                                     />
                                 </Flex>
                             </DataList.Value>

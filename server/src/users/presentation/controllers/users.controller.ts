@@ -8,6 +8,8 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -39,6 +41,9 @@ import {
   UpdateUserPolice,
 } from '../polices';
 import { CreateUserDTO, UpdateUserDTO } from '../contracts';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { CreatePackageUserCommand } from '~/users/application/commands/users/create-package-user.command';
+import { memoryStorage } from 'multer';
 
 @ApiBearerAuth()
 @Controller('users')
@@ -85,9 +90,23 @@ export class UsersController {
 
   @Post()
   @CheckPolicies(new CreateUserPolice())
-  @ApiOperation({ summary: 'Create  user id' })
+  @ApiOperation({ summary: 'Create  user' })
   public async createUser(@Body() dto: CreateUserDTO) {
     return this.commandBus.execute(new CreateUserCommand(dto));
+  }
+
+  @Post('package-registry')
+  @CheckPolicies(new CreateUserPolice())
+  @ApiOperation({ summary: 'Create  package user' })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+    }),
+  )
+  public async createPackageUser(
+    @UploadedFile('file') file: Express.Multer.File,
+  ) {
+    return this.commandBus.execute(new CreatePackageUserCommand(file));
   }
 
   @Patch(':id')

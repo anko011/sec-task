@@ -35,7 +35,7 @@ export class User extends BaseEntity {
 
   @ApiProperty()
   @ManyToOne(() => Organization, { nullable: true })
-  organization: Organization;
+  organization?: Organization;
 
   @Exclude()
   @Property()

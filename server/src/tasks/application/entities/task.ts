@@ -160,6 +160,11 @@ export class Task extends BaseEntity {
   @Property({ persist: false })
   progress: number & Opt;
 
+  private onDangerStatusIncreasedHandlers: ((
+    task: Task,
+    oldStatus: TaskDangerStatus,
+  ) => void)[] = [];
+
   constructor(
     taskPackage: TaskPackage,
     name: TaskName,
@@ -215,7 +220,27 @@ export class Task extends BaseEntity {
     return task;
   }
 
-  update(dto: UpdateTaskCommand['dto'], organizationIds: string[]) {
+  public isMoreCriticalThan(other: TaskDangerStatus): boolean {
+    const order = [
+      TaskDangerStatus.LOW,
+      TaskDangerStatus.MEDIUM,
+      TaskDangerStatus.HIGH,
+      TaskDangerStatus.CRITICAL,
+    ];
+    return order.indexOf(this.dangerStatus) > order.indexOf(other);
+  }
+
+  public addOnDangerStatusIncreased(
+    handler: (task: Task, oldStatus: TaskDangerStatus) => void,
+  ) {
+    if (!this.onDangerStatusIncreasedHandlers)
+      this.onDangerStatusIncreasedHandlers = [];
+    this.onDangerStatusIncreasedHandlers.push(handler);
+  }
+
+  public update(dto: UpdateTaskCommand['dto'], organizationIds: string[]) {
+    const oldDangerStatus = this.dangerStatus;
+
     this.name = dto.nameId
       ? Reference.createNakedFromPK(TaskName, dto.nameId)
       : this.name;
@@ -259,6 +284,16 @@ export class Task extends BaseEntity {
           Reference.createFromPK(TaskExecution, execution.id),
         );
       }
+    }
+
+    if (
+      dto.dangerStatus &&
+      this.dangerStatus !== oldDangerStatus &&
+      this.isMoreCriticalThan(oldDangerStatus)
+    ) {
+      this.onDangerStatusIncreasedHandlers.forEach((handler) =>
+        handler(this, oldDangerStatus),
+      );
     }
   }
 

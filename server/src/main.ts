@@ -3,26 +3,8 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 import { AppModule } from './app.module';
 import * as cookieParser from 'cookie-parser';
-import { EntityManager, MikroORM } from '@mikro-orm/better-sqlite';
+import { MikroORM } from '@mikro-orm/better-sqlite';
 import { useContainer } from 'class-validator';
-import { Role, User } from '~/users/application/entities';
-import { genSalt, hash } from 'bcryptjs';
-import { Seeder } from '@mikro-orm/seeder';
-
-export class AdminSeeder extends Seeder {
-  async run(em: EntityManager): Promise<void> {
-    em.persist(
-      new User(
-        'Иван',
-        'Иванов',
-        'Иванович',
-        'admin@mail.ru',
-        Role.Admin,
-        await hash('admin', await genSalt()),
-      ),
-    );
-  }
-}
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { cors: true });
@@ -38,13 +20,6 @@ async function bootstrap() {
 
     const generator = orm.getSchemaGenerator();
     await generator.updateSchema();
-
-    const em = orm.em.fork();
-    const adminExists = await em.count(User, { email: 'admin@mail.ru' });
-
-    if (!adminExists) {
-      await orm.getSeeder().seed(AdminSeeder);
-    }
   } catch (error) {
     console.error('Database initialization error:', error);
   }

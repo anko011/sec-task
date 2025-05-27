@@ -37,11 +37,18 @@ import * as path from 'node:path';
 import * as fs from 'fs/promises';
 import { JwtModule } from '@nestjs/jwt';
 import { User } from '~/users/application/entities';
+import { MailerModule } from '@nestjs-modules/mailer';
+import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { EmailNotificationService } from '~/tasks/infrastructure/email-notification.service';
+import { NotificationScheduler } from '~/tasks/infrastructure/notification.scheduler';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
     OrganizationsModule,
     JwtModule,
+    ScheduleModule.forRoot(),
     MikroOrmModule.forFeature([
       Attachment,
       TaskPackage,
@@ -52,6 +59,31 @@ import { User } from '~/users/application/entities';
       TaskStatusHistory,
       User,
     ]),
+    MailerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        transport: {
+          host: config.get('SMTP_HOST'),
+          port: parseInt(config.get('SMTP_PORT') ?? '25'),
+          secure: config.get('SMTP_SECURE') === 'true',
+          auth: {
+            user: config.get('SMTP_USER'),
+            pass: config.get('SMTP_PASSWORD'),
+          },
+        },
+        defaults: {
+          from: `"Task Management System" <${config.get('SMTP_FROM')}>`,
+        },
+        template: {
+          dir: 'templates',
+          adapter: new HandlebarsAdapter(),
+          options: {
+            strict: true,
+          },
+        },
+      }),
+    }),
   ],
   providers: [
     ...taskPackagesQueryHandlers,
@@ -63,6 +95,8 @@ import { User } from '~/users/application/entities';
     ...taskNamesQueryHandlers,
     ...taskNamesCommandHandlers,
     ...organizationsQueryHandlers,
+    EmailNotificationService,
+    NotificationScheduler,
   ],
   controllers: [
     TaskPackagesController,

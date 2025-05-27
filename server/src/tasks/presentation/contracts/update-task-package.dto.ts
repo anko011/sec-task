@@ -8,7 +8,6 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
 import { UpdateTaskDTO } from '~/tasks/presentation/contracts/update-task.dto';
 import { CreateTaskDTO } from '~/tasks/presentation/contracts/create-task.dto';
 
@@ -54,8 +53,5 @@ export class UpdateTaskPackageDTO {
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type((type) => {
-    return type?.object.id ? UpdateTaskDtoWithId : CreateTaskDTO;
-  })
   readonly tasks?: (UpdateTaskDtoWithId | CreateTaskDTO)[];
 }
